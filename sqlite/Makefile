@@ -1,4 +1,4 @@
-GOPATH = $(CURDIR)/../vendor:$(CURDIR)
+export GOPATH = $(CURDIR)/../vendor:$(CURDIR)
 
 all: build
 

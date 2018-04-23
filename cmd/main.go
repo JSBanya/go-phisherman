@@ -28,7 +28,11 @@ func main() {
 	}
 
 	log.Printf("Starting Phisherman on port %s.", port)
+	
 	scannerInit()
+	ConnectDB()
+	defer CloseDB()
+
 	log.Fatal(server.ListenAndServe())
 }
 

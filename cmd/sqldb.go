@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/glaslos/ssdeep"
-
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -12,7 +11,7 @@ var db *sql.DB
 
 const (
 	DB_PATH   = "./data.db"
-	THRESHOLD = 0
+	THRESHOLD = 80
 )
 
 func ConnectDB() {
@@ -100,7 +99,7 @@ func HashMatchFound(subdomain string, domain string, path string, hash string) b
 	return false
 }
 
-func main() {
+/*func main() {
 	ConnectDB()
 	defer CloseDB()
 
@@ -120,4 +119,4 @@ func main() {
 
 	match := HashMatchFound("mail", "google.com", "inbox", "4567")
 	fmt.Printf("Match: %v\n", match)
-}
+}*/

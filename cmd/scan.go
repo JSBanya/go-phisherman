@@ -40,8 +40,6 @@ func detectPhishingHTTP(host string, body []byte) (bool, error) {
 		return false, err
 	}
 
-	log.Printf("%s (Length: %d)\n", hash, len(hash))
-
 	return false, nil
 }
 

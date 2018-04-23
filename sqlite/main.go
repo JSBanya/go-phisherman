@@ -72,24 +72,24 @@ func GetHashForPath(subdomain string, domain string, path string) string {
 
 // This function needs to be optimized -- it rechecks hashes already checked in previous group
 func HashMatchFound(subdomain string, domain string, path string, hash string) bool {
-	// First try the most specific search (subdomain, domain, and path)
-	h := GetHashForPath(subdomain, domain, path)
-	score, _ := ssdeep.Distance(h, hash)
-	if score > THRESHOLD {
-		return true
-	}
+	// // First try the most specific search (subdomain, domain, and path)
+	// h := GetHashForPath(subdomain, domain, path)
+	// score, _ := ssdeep.Distance(h, hash)
+	// if score > THRESHOLD {
+	// 	return true
+	// }
 
-	// Next try searching without path (subdomain, domain)
-	hlist := GetHashesForSubdomain(subdomain, domain)
-	for _, elem := range hlist {
-		score, _ := ssdeep.Distance(elem, hash)
-		if score > THRESHOLD {
-			return true
-		}
-	}
+	// // Next try searching without path (subdomain, domain)
+	// hlist := GetHashesForSubdomain(subdomain, domain)
+	// for _, elem := range hlist {
+	// 	score, _ := ssdeep.Distance(elem, hash)
+	// 	if score > THRESHOLD {
+	// 		return true
+	// 	}
+	// }
 
 	// Finally search the entire domain
-	hlist = GetHashesForDomain(domain)
+	hlist := GetHashesForDomain(domain)
 	for _, elem := range hlist {
 		score, _ := ssdeep.Distance(elem, hash)
 		if score > THRESHOLD {

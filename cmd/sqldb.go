@@ -16,7 +16,7 @@ const (
 
 func ConnectDB() {
 	db, _ = sql.Open("sqlite3", DB_PATH)
-	statement, _ := db.Prepare("CREATE TABLE IF NOT EXISTS hashes (subdomain VARCHAR(128), domain VARCHAR(128), path VARCHAR(128), hash VARCHAR(128), PRIMARY KEY (subdomain, domain, path))")
+	statement, _ := db.Prepare("CREATE TABLE IF NOT EXISTS hashes (subdomain VARCHAR(128), domain VARCHAR(128), path VARCHAR(128), hash VARCHAR(128), safe INT, PRIMARY KEY (subdomain, domain, path))")
 	statement.Exec()
 }
 
@@ -25,15 +25,15 @@ func CloseDB() {
 }
 
 // Stores hash for the site http(s)://${subdomain}.${domain}/${path}
-func InsertHash(subdomain string, domain string, path string, hash string) {
-	statement, _ := db.Prepare("INSERT INTO hashes (subdomain, domain, path, hash) VALUES (?, ?, ?, ?)")
-	_, err := statement.Exec(subdomain, domain, path, hash)
+func InsertHash(subdomain string, domain string, path string, hash string, safe int) {
+	statement, _ := db.Prepare("INSERT INTO hashes (subdomain, domain, path, hash, safe) VALUES (?, ?, ?, ?, ?)")
+	_, err := statement.Exec(subdomain, domain, path, hash, safe)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 	}
 }
 
-func UpdateHash(subdomain string, domain string, path string, hash string) {
+func UpdateHash(subdomain string, domain string, path string, hash string, safe int) {
 	statement, _ := db.Prepare("UPDATE hashes SET hash=? WHERE subdomain=? AND domain=? AND path=?")
 	statement.Exec(hash, subdomain, domain, path)
 }
@@ -70,33 +70,19 @@ func GetHashForPath(subdomain string, domain string, path string) string {
 }
 
 // This function needs to be optimized -- it rechecks hashes already checked in previous group
-func HashMatchFound(subdomain string, domain string, path string, hash string) bool {
-	// // First try the most specific search (subdomain, domain, and path)
-	// h := GetHashForPath(subdomain, domain, path)
-	// score, _ := ssdeep.Distance(h, hash)
-	// if score > THRESHOLD {
-	// 	return true
-	// }
-
-	// // Next try searching without path (subdomain, domain)
-	// hlist := GetHashesForSubdomain(subdomain, domain)
-	// for _, elem := range hlist {
-	// 	score, _ := ssdeep.Distance(elem, hash)
-	// 	if score > THRESHOLD {
-	// 		return true
-	// 	}
-	// }
-
-	// Finally search the entire domain
-	hlist := GetHashesForDomain(domain)
-	for _, elem := range hlist {
-		score, _ := ssdeep.Distance(elem, hash)
-		if score > THRESHOLD {
-			return true
+func HashMatch(subdomain string, domain string, path string, hash string) string {
+	rows, _ := db.Query("SELECT subdomain, domain, path, hash FROM hashes WHERE domain<>?", domain)
+	var sd, d, p, h string
+	for rows.Next() {
+		rows.Scan(&sd, &d, &p, &h)
+		score, _ := ssdeep.Distance(h, hash)
+		if score >= THRESHOLD {
+			rows.Close()
+			return fmt.Sprintf("%s.%s/%s", sd, d, p)
 		}
 	}
-
-	return false
+	rows.Close()
+	return ""
 }
 
 /*func main() {

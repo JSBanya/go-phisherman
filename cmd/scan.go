@@ -9,7 +9,8 @@ import (
 
 const CACHE_CLEAR_INTERVAL = 60 * 60 * 12 // Seconds
 
-var cache map[string]bool
+var cache 	map[string]bool
+var tldlist map[string]bool
 
 func scannerInit() {
 	cache = make(map[string]bool)
@@ -28,7 +29,7 @@ func detectPhishingHTTPs(host string) bool {
 	return false
 }
 
-func detectPhishingHTTP(host string, body []byte) (bool, error) {
+func detectPhishingHTTP(subdomain string, domain string, path string, body []byte) (bool, error) {
 	if len(body) < 4096 {
 		// SSDeep enforced a min length of 4096 bytes
 		// It is unlikely that a phishing website will be smaller than this

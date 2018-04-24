@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"compress/gzip"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -21,8 +22,6 @@ func proxyConnection(w http.ResponseWriter, r *http.Request) {
 }
 
 func proxyHTTPs(w http.ResponseWriter, r *http.Request) {
-	//
-
 	// Establish connection
 	dest_conn, err := net.DialTimeout("tcp", r.Host, 10*time.Second)
 	if err != nil {
@@ -69,8 +68,13 @@ func proxyHTTP(w http.ResponseWriter, req *http.Request) {
 	original := ioutil.NopCloser(bytes.NewBuffer(rawContents))
 
 	// Check to see if the site is cached
-	host := strings.TrimSpace(req.URL.Hostname())
-	isPhishing, isCached := cache[host]
+	subdomains := strings.Split(req.URL.Hostname(), ".")
+
+	domain := fmt.Sprintf("%s.%s", subdomains[len(subdomains)-2], subdomains[len(subdomains)-1])
+	path := strings.Trim(strings.TrimSpace(req.URL.Path), "/")
+
+	url := fmt.Sprintf("%s%s", domain, path)
+	isPhishing, isCached := cache[url]
 
 	// If the response contains HTML and is not cached, scan it
 	contentType := strings.TrimSpace(strings.Split(resp.Header.Get("Content-type"), ";")[0])
@@ -100,7 +104,7 @@ func proxyHTTP(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		isPhishing, err = detectPhishingHTTP(host, decompressedContent)
+		isPhishing, err = detectPhishingHTTP("www", domain, path, decompressedContent)
 		if err != nil {
 			log.Printf("%s\n", err)
 			http.Error(w, "Phisherman: Error while scanning webpage", http.StatusInternalServerError)

@@ -41,8 +41,26 @@ func detectPhishingHTTP(subdomain string, domain string, path string, body []byt
 		return false, err
 	}
 
-	fmt.Printf("%s\n", hash)
+	switch DomainStatus(domain) {
+	case 0: // Domain not in db
+		match := HashMatch(domain, hash)
+		if match == "" {
+			InsertHash(subdomain, domain, path, hash, 1)
+			return false, nil
+		} else {
+			fmt.Printf("Fuzzy hash collision found:\n")
+			fmt.Printf("%s.%s/%s matches %s\n", subdomain, domain, path, match)
 
+			InsertHash(subdomain, domain, path, hash, 0)
+			return true, nil
+		}
+	case 1: // Domain was previously marked as unsafe
+		UpdateHash(subdomain, domain, path, hash, 0)
+		return true, nil
+	case 2: // Domain was previously marked as safe
+		UpdateHash(subdomain, domain, path, hash, 1)
+		return false, nil
+	}
 	return false, nil
 }
 

@@ -1,5 +1,5 @@
 BINARY=phisherman
-GOPATH=$(CURDIR)/vendor/:$(CURDIR)/cmd/
+export GOPATH=$(CURDIR)/vendor/:$(CURDIR)/cmd/
 
 all: build
 

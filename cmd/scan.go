@@ -42,7 +42,6 @@ func detectPhishingHTTP(subdomain string, domain string, path string, body []byt
 		return false, err
 	}
 
-	// Check if domain is in DB
 	switch DomainStatus(domain) {
 	case 0: // Domain not in db
 		match := HashMatch(domain, hash)

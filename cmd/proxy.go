@@ -67,12 +67,29 @@ func proxyHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 	original := ioutil.NopCloser(bytes.NewBuffer(rawContents))
 
-	// Check to see if the site is cached
-	subdomains := strings.Split(req.URL.Hostname(), ".")
+	// Split the URL into subdomain, domain, and path
+	subdomainList := strings.Split(req.URL.Hostname(), ".")
+	if len(subdomainList) < 2 {
+		http.Error(w, "Phisherman: Unprocessable domain name.", http.StatusInternalServerError)
+		return
+	}
 
-	domain := fmt.Sprintf("%s.%s", subdomains[len(subdomains)-2], subdomains[len(subdomains)-1])
+	domain := fmt.Sprintf("%s.%s", subdomainList[len(subdomainList)-2], subdomainList[len(subdomainList)-1])
+	subdomainList = subdomainList[0 : len(subdomainList)-2] // Trim whatever is not included in the domain
+
+	if tldlist[domain] {
+		// Last two segments are a top level domain (i.e. co.uk)
+		// Append the previous segment if it exists
+		if len(subdomainList) > 0 {
+			domain = fmt.Sprintf("%s.%s", subdomainList[len(subdomainList)-1], domain)
+			subdomainList = subdomainList[0 : len(subdomainList)-1]
+		}
+	}
+
+	subdomain := strings.Join(subdomainList, ".")
 	path := strings.Trim(strings.TrimSpace(req.URL.Path), "/")
 
+	// Check cached status
 	url := fmt.Sprintf("%s%s", domain, path)
 	isPhishing, isCached := cache[url]
 
@@ -104,7 +121,7 @@ func proxyHTTP(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		isPhishing, err = detectPhishingHTTP("www", domain, path, decompressedContent)
+		isPhishing, err = detectPhishingHTTP(subdomain, domain, path, decompressedContent)
 		if err != nil {
 			log.Printf("%s\n", err)
 			http.Error(w, "Phisherman: Error while scanning webpage", http.StatusInternalServerError)

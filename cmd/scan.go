@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/glaslos/ssdeep"
 	"log"
 	"strings"
@@ -9,8 +10,7 @@ import (
 
 const CACHE_CLEAR_INTERVAL = 60 * 60 * 12 // Seconds
 
-var cache 	map[string]bool
-var tldlist map[string]bool
+var cache map[string]bool
 
 func scannerInit() {
 	cache = make(map[string]bool)
@@ -40,6 +40,8 @@ func detectPhishingHTTP(subdomain string, domain string, path string, body []byt
 	if err != nil {
 		return false, err
 	}
+
+	fmt.Printf("%s\n", hash)
 
 	return false, nil
 }

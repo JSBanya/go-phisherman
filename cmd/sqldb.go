@@ -69,7 +69,6 @@ func GetHashForPath(subdomain string, domain string, path string) string {
 	return hash
 }
 
-// This function needs to be optimized -- it rechecks hashes already checked in previous group
 func HashMatch(subdomain string, domain string, path string, hash string) string {
 	rows, _ := db.Query("SELECT subdomain, domain, path, hash FROM hashes WHERE domain<>?", domain)
 	var sd, d, p, h string

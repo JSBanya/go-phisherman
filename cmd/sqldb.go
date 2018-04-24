@@ -69,7 +69,7 @@ func GetHashForPath(subdomain string, domain string, path string) string {
 	return hash
 }
 
-func HashMatch(subdomain string, domain string, path string, hash string) string {
+func HashMatch(domain string, hash string) string {
 	rows, _ := db.Query("SELECT subdomain, domain, path, hash FROM hashes WHERE domain<>?", domain)
 	var sd, d, p, h string
 	for rows.Next() {
@@ -82,6 +82,20 @@ func HashMatch(subdomain string, domain string, path string, hash string) string
 	}
 	rows.Close()
 	return ""
+}
+
+// Returns 0 if domain not in db, 1 if marked as unsafe, and 2 if marked as safe
+func DomainStatus(domain string) int {
+	rows, _ := db.Query("SELEC safe FROM hashes WHERE domain=?", domain)
+	var safe int
+	for rows.Next() {
+		rows.Scan(&safe)
+		if safe == 0 {
+			return 1
+		}
+		return 2
+	}
+	return 0
 }
 
 /*func main() {

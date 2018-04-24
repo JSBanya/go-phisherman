@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/glaslos/ssdeep"
 	"log"
 	"strings"
@@ -9,7 +10,7 @@ import (
 
 const CACHE_CLEAR_INTERVAL = 60 * 60 * 12 // Seconds
 
-var cache 	map[string]bool
+var cache map[string]bool
 var tldlist map[string]bool
 
 func scannerInit() {
@@ -39,6 +40,28 @@ func detectPhishingHTTP(subdomain string, domain string, path string, body []byt
 	hash, err := ssdeep.FuzzyBytes(body)
 	if err != nil {
 		return false, err
+	}
+
+	// Check if domain is in DB
+	switch DomainStatus(domain) {
+	case 0: // Domain not in db
+		match := HashMatch(domain, hash)
+		if match == "" {
+			InsertHash(subdomain, domain, path, hash, 1)
+			return false, nil
+		} else {
+			fmt.Printf("Fuzzy hash collision found:\n")
+			fmt.Printf("%s.%s/%s matches %s\n", subdomain, domain, path, match)
+
+			InsertHash(subdomain, domain, path, hash, 0)
+			return true, nil
+		}
+	case 1: // Domain was previously marked as unsafe
+		UpdateHash(subdomain, domain, path, hash, 0)
+		return true, nil
+	case 2: // Domain was previously marked as safe
+		UpdateHash(subdomain, domain, path, hash, 1)
+		return false, nil
 	}
 
 	return false, nil

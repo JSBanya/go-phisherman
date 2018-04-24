@@ -36,6 +36,10 @@ func main() {
 	log.Fatal(server.ListenAndServe())
 }
 
+func importTDLList(name string) {
+	
+}
+
 func usage() {
 	fmt.Printf("phisherman [port]\n")
 	fmt.Printf("Starts the phisherman proxy server on the provided port (default: 52078).\n")

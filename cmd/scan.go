@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/glaslos/ssdeep"
 	"log"
 	"strings"
@@ -42,6 +41,8 @@ func detectPhishingHTTP(domain string, body []byte) (bool, error) {
 	}
 	fmt.Printf("hash: %s\n", hash)
 
+	log.Printf("%s - %s\n", hash, domain)
+
 	switch DomainStatus(domain) {
 	case 0: // Domain not in db
 		match := HashMatch(domain, hash)
@@ -62,6 +63,7 @@ func detectPhishingHTTP(domain string, body []byte) (bool, error) {
 		UpdateDomainStatus(domain, 1)
 		return false, nil
 	}
+
 	return false, nil
 }
 

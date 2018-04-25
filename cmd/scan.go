@@ -28,7 +28,7 @@ func detectPhishingHTTPs(host string) bool {
 	return false
 }
 
-func detectPhishingHTTP(domain string, body []byte) (bool, error) {
+func detectPhishingHTTP(subdomain string, domain string, path string, body []byte) (bool, error) {
 	if len(body) < 4096 {
 		// SSDeep enforced a min length of 4096 bytes
 		// It is unlikely that a phishing website will be smaller than this
@@ -46,20 +46,19 @@ func detectPhishingHTTP(domain string, body []byte) (bool, error) {
 	case 0: // Domain not in db
 		match := HashMatch(domain, hash)
 		if match == "" {
-			InsertHash(domain, hash, 1)
+			InsertHash(subdomain, domain, path, hash, 1)
 			return false, nil
 		} else {
 			log.Printf("Fuzzy hash collision found:\n")
-			log.Printf("%s matches %s\n", domain, match)
+			log.Printf("%s.%s/%s matches %s\n", subdomain, domain, path, match)
 
-			InsertHash(domain, hash, 0)
+			UpdateDomainStatus(domain, 0)
+			InsertHash(subdomain, domain, path, hash, 0)
 			return true, nil
 		}
 	case 1: // Domain was previously marked as unsafe
-		UpdateDomainStatus(domain, 0)
 		return true, nil
 	case 2: // Domain was previously marked as safe
-		UpdateDomainStatus(domain, 1)
 		return false, nil
 	}
 

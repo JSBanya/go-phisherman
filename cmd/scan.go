@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/glaslos/ssdeep"
 	"log"
 	"strings"
@@ -29,7 +28,7 @@ func detectPhishingHTTPs(host string) bool {
 	return false
 }
 
-func detectPhishingHTTP(subdomain string, domain string, path string, body []byte) (bool, error) {
+func detectPhishingHTTP(domain string, body []byte) (bool, error) {
 	if len(body) < 4096 {
 		// SSDeep enforced a min length of 4096 bytes
 		// It is unlikely that a phishing website will be smaller than this
@@ -40,6 +39,8 @@ func detectPhishingHTTP(subdomain string, domain string, path string, body []byt
 	if err != nil {
 		return false, err
 	}
+
+	log.Printf("%s - %s\n", hash, domain)
 
 	switch DomainStatus(domain) {
 	case 0: // Domain not in db
@@ -61,6 +62,7 @@ func detectPhishingHTTP(subdomain string, domain string, path string, body []byt
 		UpdateHash(subdomain, domain, path, hash, 1)
 		return false, nil
 	}
+
 	return false, nil
 }
 

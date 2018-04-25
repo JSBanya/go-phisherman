@@ -86,7 +86,7 @@ func HashMatch(domain string, hash string) string {
 
 // Returns 0 if domain not in db, 1 if marked as unsafe, and 2 if marked as safe
 func DomainStatus(domain string) int {
-	rows, _ := db.Query("SELEC safe FROM hashes WHERE domain=?", domain)
+	rows, _ := db.Query("SELECT safe FROM hashes WHERE domain=?", domain)
 	var safe int
 	for rows.Next() {
 		rows.Scan(&safe)
@@ -97,25 +97,3 @@ func DomainStatus(domain string) int {
 	}
 	return 0
 }
-
-/*func main() {
-	ConnectDB()
-	defer CloseDB()
-
-	InsertHash("www", "google.com", "somepath", "0123")
-	InsertHash("mail", "google.com", "inbox", "4567")
-	InsertHash("mail", "google.com", "outbox", "8901")
-	InsertHash("www", "facebook.com", "someotherpath", "2345")
-
-	h := GetHashForPath("mail", "google.com", "inbox")
-	fmt.Printf("mail.google.com/inbox: %v\n", h)
-
-	hlist := GetHashesForSubdomain("mail", "google.com")
-	fmt.Printf("mail.google.com: %v\n", hlist)
-
-	hlist = GetHashesForDomain("google.com")
-	fmt.Printf("google.com: %v\n", hlist)
-
-	match := HashMatchFound("mail", "google.com", "inbox", "4567")
-	fmt.Printf("Match: %v\n", match)
-}*/

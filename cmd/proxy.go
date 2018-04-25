@@ -59,12 +59,12 @@ func proxyHTTP(w http.ResponseWriter, req *http.Request) {
 
 	// Extract the body
 	rawContents, err := ioutil.ReadAll(resp.Body)
-	//defer resp.Body.Close()
 	if err != nil {
 		log.Printf("%s\n", err)
 		http.Error(w, "Phisherman: Error processing request", http.StatusInternalServerError)
 		return
 	}
+	defer resp.Body.Close()
 	original := bytes.NewBuffer(rawContents)
 
 	// Split the URL into subdomain, domain, and path
@@ -87,47 +87,47 @@ func proxyHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Check cached status
-	isPhishing, _ := cache[domain]
+	isPhishing, isCached := cache[domain]
 
 	// If the response possible contains HTML and is not cached, scan it
-	//contentType := strings.TrimSpace(strings.Split(resp.Header.Get("Content-type"), ";")[0])
-	//if (contentType == "text/html" || contentType == "text/plain" || contentType == "") && !isCached {
-	duplicateContent := make([]byte, len(rawContents))
-	for i := 0; i < len(rawContents); i++ {
-		duplicateContent[i] = rawContents[i]
-	}
-	buffer := bytes.NewBuffer(duplicateContent)
-
-	// Handle encoding
-	var reader io.Reader
-	switch resp.Header.Get("Content-Encoding") {
-	case "gzip":
-		{
-			reader, err = gzip.NewReader(buffer)
-			if err != nil {
-				log.Printf("Error: %s\n", err)
-				http.Error(w, "Phisherman: Error handling gzipped request", http.StatusInternalServerError)
-				return
-			}
+	contentType := strings.TrimSpace(strings.Split(resp.Header.Get("Content-type"), ";")[0])
+	if (contentType == "text/html" || contentType == "text/plain" || contentType == "") && !isCached {
+		duplicateContent := make([]byte, len(rawContents))
+		for i := 0; i < len(rawContents); i++ {
+			duplicateContent[i] = rawContents[i]
 		}
-	default:
-		reader = buffer
-	}
+		buffer := bytes.NewBuffer(duplicateContent)
 
-	decompressedContent, err := ioutil.ReadAll(reader)
-	if err != nil {
-		log.Printf("Error: %s\n", err)
-		http.Error(w, "Phisherman: Error decommpressing request", http.StatusInternalServerError)
-		return
-	}
+		// Handle encoding
+		var reader io.Reader
+		switch resp.Header.Get("Content-Encoding") {
+		case "gzip":
+			{
+				reader, err = gzip.NewReader(buffer)
+				if err != nil {
+					log.Printf("Error: %s\n", err)
+					http.Error(w, "Phisherman: Error handling gzipped request", http.StatusInternalServerError)
+					return
+				}
+			}
+		default:
+			reader = buffer
+		}
 
-	isPhishing, err = detectPhishingHTTP(domain, decompressedContent)
-	if err != nil {
-		log.Printf("Error: %s\n", err)
-		http.Error(w, "Phisherman: Error while scanning webpage", http.StatusInternalServerError)
-		return
+		decompressedContent, err := ioutil.ReadAll(reader)
+		if err != nil {
+			log.Printf("Error: %s\n", err)
+			http.Error(w, "Phisherman: Error decommpressing request", http.StatusInternalServerError)
+			return
+		}
+
+		isPhishing, err = detectPhishingHTTP(domain, decompressedContent)
+		if err != nil {
+			log.Printf("Error: %s\n", err)
+			http.Error(w, "Phisherman: Error while scanning webpage", http.StatusInternalServerError)
+			return
+		}
 	}
-	//}
 
 	if isPhishing {
 		// Phishing attempt detected

@@ -15,13 +15,42 @@ import (
 
 func proxyConnection(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodConnect {
-		//proxyHTTPs(w, r)
+		proxyHTTPs(w, r)
 	} else {
 		proxyHTTP(w, r)
 	}
 }
 
 func proxyHTTPs(w http.ResponseWriter, r *http.Request) {
+	/*if r.Method == "CONNECT" {
+		// If this is a GET request, scan it
+		// Split the URL into subdomain, domain, and path
+		subdomainList := strings.Split(r.URL.Hostname(), ".")
+		if len(subdomainList) < 2 {
+			http.Error(w, "Phisherman: Unprocessable domain name.", http.StatusInternalServerError)
+			return
+		}
+
+		domain := fmt.Sprintf("%s.%s", subdomainList[len(subdomainList)-2], subdomainList[len(subdomainList)-1])
+		subdomainList = subdomainList[0 : len(subdomainList)-2] // Trim whatever is not included in the domain
+
+		if tldlist[domain] {
+			// Last two segments are a top level domain (i.e. co.uk)
+			// Append the previous segment if it exists
+			if len(subdomainList) > 0 {
+				domain = fmt.Sprintf("%s.%s", subdomainList[len(subdomainList)-1], domain)
+				subdomainList = subdomainList[0 : len(subdomainList)-1]
+			}
+		}
+
+		subdomain := strings.Join(subdomainList, ".")
+		path := strings.Trim(strings.TrimSpace(r.URL.Path), "/")
+
+		fmt.Printf("Subdomain: %s\n", subdomain)
+		fmt.Printf("Domain: %s\n", domain)
+		fmt.Printf("Path: %s\n", path)
+	}*/
+
 	// Establish connection
 	dest_conn, err := net.DialTimeout("tcp", r.Host, 10*time.Second)
 	if err != nil {
@@ -30,6 +59,7 @@ func proxyHTTPs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+
 	hijacker, ok := w.(http.Hijacker)
 	if !ok {
 		http.Error(w, "", http.StatusInternalServerError)

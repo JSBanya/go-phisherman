@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/glaslos/ssdeep"
 	"log"
 	"strings"
@@ -40,7 +41,10 @@ func detectPhishingHTTP(subdomain string, domain string, path string, body []byt
 		return false, err
 	}
 
-	log.Printf("%s - %s\n", hash, domain)
+	url := fmt.Sprintf("%s/%s", domain, path)
+	if subdomain != "" {
+		url = fmt.Sprintf("%s.%s", subdomain, url)
+	}
 
 	switch DomainStatus(domain) {
 	case 0: // Domain not in db
@@ -49,17 +53,23 @@ func detectPhishingHTTP(subdomain string, domain string, path string, body []byt
 			InsertHash(subdomain, domain, path, hash, 1)
 			return false, nil
 		} else {
-			log.Printf("Fuzzy hash collision found:\n")
-			log.Printf("%s.%s/%s matches %s\n", subdomain, domain, path, match)
-
 			UpdateDomainStatus(domain, 0)
 			InsertHash(subdomain, domain, path, hash, 0)
+
+			cache[url] = true
+			log.Printf("%s was detected as a new potential phishing site.", url)
 			return true, nil
 		}
 	case 1: // Domain was previously marked as unsafe
-		return true, nil
+		{
+			cache[url] = true
+			return true, nil
+		}
 	case 2: // Domain was previously marked as safe
-		return false, nil
+		{
+			cache[url] = false
+			return false, nil
+		}
 	}
 
 	return false, nil

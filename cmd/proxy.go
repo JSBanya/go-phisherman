@@ -121,12 +121,13 @@ func proxyHTTP(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		isPhishing, err = detectPhishingHTTP(subdomain, domain, path, decompressedContent)
+		isPhishing, err = detectPhishingHTTP(domain, decompressedContent)
 		if err != nil {
 			log.Printf("%s\n", err)
 			http.Error(w, "Phisherman: Error while scanning webpage", http.StatusInternalServerError)
 			return
 		}
+		fmt.Printf("isphising: %v\n", isPhishing)
 	}
 
 	if isPhishing {

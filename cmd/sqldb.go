@@ -59,6 +59,7 @@ func HashMatch(domain string, hash string) string {
 // Returns 0 if domain not in db, 1 if marked as unsafe, and 2 if marked as safe
 func DomainStatus(domain string) int {
 	rows, _ := db.Query("SELECT safe FROM hashes WHERE domain=?", domain)
+	defer rows.Close()
 	var safe int
 	for rows.Next() {
 		rows.Scan(&safe)

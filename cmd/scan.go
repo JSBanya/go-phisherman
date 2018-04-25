@@ -39,7 +39,6 @@ func detectPhishingHTTP(domain string, body []byte) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	fmt.Printf("hash: %s\n", hash)
 
 	log.Printf("%s - %s\n", hash, domain)
 
@@ -50,8 +49,8 @@ func detectPhishingHTTP(domain string, body []byte) (bool, error) {
 			InsertHash(domain, hash, 1)
 			return false, nil
 		} else {
-			fmt.Printf("Fuzzy hash collision found:\n")
-			fmt.Printf("%s matches %s\n", domain, match)
+			log.Printf("Fuzzy hash collision found:\n")
+			log.Printf("%s matches %s\n", domain, match)
 
 			InsertHash(domain, hash, 0)
 			return true, nil

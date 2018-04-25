@@ -116,8 +116,15 @@ func proxyHTTP(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
+	subdomain := strings.Join(subdomainList, ".")
+	path := strings.Trim(strings.TrimSpace(req.URL.Path), "/")
+
 	// Check cached status
-	isPhishing, isCached := cache[domain]
+	url := fmt.Sprintf("%s/%s", domain, path)
+	if subdomain != "" {
+		url = fmt.Sprintf("%s.%s", subdomain, url)
+	}
+	isPhishing, isCached := cache[url]
 
 	// If the response possible contains HTML and is not cached, scan it
 	contentType := strings.TrimSpace(strings.Split(resp.Header.Get("Content-type"), ";")[0])
@@ -151,7 +158,7 @@ func proxyHTTP(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		isPhishing, err = detectPhishingHTTP(domain, decompressedContent)
+		isPhishing, err = detectPhishingHTTP(subdomain, domain, path, decompressedContent)
 		if err != nil {
 			log.Printf("Error: %s\n", err)
 			http.Error(w, "Phisherman: Error while scanning webpage", http.StatusInternalServerError)

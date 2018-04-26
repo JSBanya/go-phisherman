@@ -12,7 +12,7 @@ var db *sql.DB
 
 const (
 	DB_PATH   = "./data.db"
-	THRESHOLD = 80
+	THRESHOLD = 25
 )
 
 func ConnectDB() {
@@ -60,6 +60,7 @@ func HashMatch(domain string, hash string) string {
 		rows.Scan(&sd, &d, &p, &h)
 		score, _ := ssdeep.Distance(h, hash)
 		if score >= THRESHOLD {
+			log.Printf("Site match: %s.%s/%s\n", sd, d, p)
 			return fmt.Sprintf("%s.%s/%s", sd, d, p)
 		}
 	}
@@ -74,9 +75,37 @@ func DomainStatus(domain string) int {
 	for rows.Next() {
 		rows.Scan(&safe)
 		if safe == 0 {
+			log.Printf("Site match: %s\n")
 			return 1
 		}
 		return 2
 	}
 	return 0
+}
+
+func SiteStatus(subdomain string, domain string, path string) int {
+	rows, _ := db.Query("SELECT safe from hashes WHERE subdomain=? AND domain=? AND path=?", subdomain, domain, path)
+	defer rows.Close()
+	var safe int
+	for rows.Next() {
+		rows.Scan(&safe)
+		if safe == 0 {
+			return 1
+		}
+		return 2
+	}
+	return 0
+}
+
+func SiteExistsDB(subdomain string, domain string, path string) bool {
+	rows, err := db.Query("SELECT * FROM hashes WHERE subdomain=? AND domain=? AND path=?", subdomain, domain, path)
+	if err != nil {
+		log.Printf("Error: %v\n", err)
+		return false
+	}
+	defer rows.Close()
+	for rows.Next() {
+		return true
+	}
+	return false
 }

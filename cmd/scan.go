@@ -67,8 +67,20 @@ func detectPhishingHTTP(subdomain string, domain string, path string, body []byt
 		}
 	case 2: // Domain was previously marked as safe
 		{
-			cache[url] = false
-			return false, nil
+			if SiteExistsDB(subdomain, domain, path) {
+				cache[url] = false
+				return false, nil
+			}
+			match := HashMatch(domain, hash)
+			if match == "" {
+				InsertHash(subdomain, domain, path, hash, 1)
+				return false, nil
+			}
+			UpdateDomainStatus(domain, 0)
+			InsertHash(subdomain, domain, path, hash, 0)
+			cache[url] = true
+			log.Printf("%s was detected as a new potential phishing site.", url)
+			return true, nil
 		}
 	}
 

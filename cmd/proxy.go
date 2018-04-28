@@ -3,14 +3,13 @@ package main
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
-	"net"
 	"net/http"
 	"strings"
-	"time"
 )
 
 func proxyConnection(w http.ResponseWriter, r *http.Request) {
@@ -23,7 +22,7 @@ func proxyConnection(w http.ResponseWriter, r *http.Request) {
 
 func proxyHTTPs(w http.ResponseWriter, r *http.Request) {
 	// Establish connection
-	dest_conn, err := net.DialTimeout("tcp", r.Host, 10*time.Second)
+	dest_conn, err := tls.Dial("tcp", r.Host, nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusServiceUnavailable)
 		return
@@ -43,12 +42,28 @@ func proxyHTTPs(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "", http.StatusServiceUnavailable)
 	}
 
+	// Enable encryption/decryption of TLS data to/from client
+	config := &tls.Config{
+		GetCertificate: func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
+			// Here is where we would hook into the SQLite database to retrieve certs
+			//log.Printf("Grabbing certificate for %s\n", hello.ServerName)
+			// For testing, all https sites will use this self-signed cert
+			cert, err := tls.LoadX509KeyPair("google.crt", "google.key")
+			if err != nil {
+				return nil, err
+			}
+			return &cert, nil
+		},
+	}
+	client_tls_conn := tls.Server(client_conn, config)
+
 	// Forward communication in both directions
-	go io.Copy(dest_conn, client_conn)
-	io.Copy(client_conn, dest_conn)
+	go io.Copy(dest_conn, client_tls_conn)
+	io.Copy(client_tls_conn, dest_conn)
 
 	dest_conn.Close()
 	client_conn.Close()
+	client_tls_conn.Close()
 }
 
 func proxyHTTP(w http.ResponseWriter, req *http.Request) {

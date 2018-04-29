@@ -2,6 +2,9 @@ package main
 
 import (
 	"bytes"
+	"github.com/anthonynsimon/bild/effect"
+	"image"
+	"image/jpeg"
 	"os/exec"
 	"strings"
 )
@@ -25,4 +28,21 @@ func getImageFromUrl(url string) ([]byte, error) {
 	}
 
 	return out.Bytes(), nil
+}
+
+// Returns a image containing only edges
+func getImageEdges(raw []byte) ([]byte, error) {
+	imageReader := bytes.NewReader(raw)
+	original, _, err := image.Decode(imageReader)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	result := effect.EdgeDetection(original, 1.0)
+	buf := new(bytes.Buffer)
+	err = jpeg.Encode(buf, result, nil)
+	if err != nil {
+		return []byte{}, err
+	}
+	return buf.Bytes(), nil
 }

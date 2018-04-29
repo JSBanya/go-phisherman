@@ -10,6 +10,7 @@ build:
 fetch:
 	go get github.com/mattn/go-sqlite3
 	go get github.com/glaslos/ssdeep
+	go get github.com/anthonynsimon/bild/effect
 
 install:
 	go install github.com/mattn/go-sqlite3

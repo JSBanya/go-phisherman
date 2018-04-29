@@ -29,21 +29,38 @@ func detectPhishingHTTPs(host string) bool {
 	return false
 }
 
-func detectPhishingHTTP(subdomain string, domain string, path string, body []byte) (bool, error) {
-	if len(body) < 4096 {
-		// SSDeep enforced a min length of 4096 bytes
-		// It is unlikely that a phishing website will be smaller than this
-		return false, nil
-	}
-
-	hash, err := ssdeep.FuzzyBytes(body)
-	if err != nil {
-		return false, err
-	}
-
+func detectPhishingHTTP(subdomain string, domain string, path string) (bool, error) {
 	url := fmt.Sprintf("%s/%s", domain, path)
 	if subdomain != "" {
 		url = fmt.Sprintf("%s.%s", subdomain, url)
+	}
+
+	// Get the image of the page
+	binaryImg, err := getImageFromUrl(url)
+	if err != nil {
+		log.Printf("wkhtmltoimage error: %s\n", err)
+		// Error getting the image of the webpage
+		// Try two more times before terminating the connection
+		for i := 0; i < 2 || err != nil; i++ {
+			binaryImg, err = getImageFromUrl(url)
+		}
+
+		if err != nil {
+			// Unable to get webpage image
+			return false, err
+		}
+	}
+
+	if len(binaryImg) < 4096 {
+		// SSDeep enforced a min length of 4096 bytes
+		// It is unlikely that a phishing website will be smaller than this anyway
+		cache[url] = false
+		return false, nil
+	}
+
+	hash, err := ssdeep.FuzzyBytes(binaryImg)
+	if err != nil {
+		return false, err
 	}
 
 	switch DomainStatus(domain) {
@@ -85,13 +102,6 @@ func detectPhishingHTTP(subdomain string, domain string, path string, body []byt
 	}
 
 	return false, nil
-}
-
-// Sends a GET request to the given host over HTTPs
-// Returns the body of the request as a string
-func probeHTTPs(host string) string {
-
-	return ""
 }
 
 func clearCache() {

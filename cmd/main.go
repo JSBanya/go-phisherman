@@ -26,14 +26,22 @@ func main() {
 	server := &http.Server{
 		Addr:              fmt.Sprintf(":%s", port),
 		Handler:           http.HandlerFunc(proxyConnection),
-		ReadHeaderTimeout: 600 * time.Millisecond,                                       // Read timeout
-		WriteTimeout:      600 * time.Millisecond,                                       // Write timeout
+		ReadHeaderTimeout: 10 * 60 * time.Second,                                        // Read timeout
+		WriteTimeout:      10 * 60 * time.Second,                                        // Write timeout
 		TLSNextProto:      make(map[string]func(*http.Server, *tls.Conn, http.Handler)), // Disable HTTP/2.0 support
 	}
 
 	// Load public suffic list
 	tldlist = make(map[string]bool)
 	loadPublicSuffixList(publicSufficList)
+
+	// Ensure that wkhtmltoimage is correctly installed
+	version, err := getWkHtmlToImageVersion()
+	if err != nil {
+		log.Fatal("Unable to load wkhtmltoimage. Please check your installation and try again.\nError: %s\n", err)
+	}
+
+	log.Printf("Using wkhtmltoimage version %s\n", version)
 
 	// Start the serevr
 	log.Printf("Starting Phisherman on port %s.", port)

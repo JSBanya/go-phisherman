@@ -2,3 +2,4 @@
 vendor/*
 phisherman
 data.db
+rootCA.*

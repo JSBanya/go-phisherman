@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os/exec"
 	"strings"
 )
 
@@ -47,8 +48,13 @@ func proxyHTTPs(w http.ResponseWriter, r *http.Request) {
 		GetCertificate: func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
 			// Here is where we would hook into the SQLite database to retrieve certs
 			//log.Printf("Grabbing certificate for %s\n", hello.ServerName)
-			// For testing, all https sites will use this self-signed cert
-			cert, err := tls.LoadX509KeyPair("google.crt", "google.key")
+			// Run cert generation script
+			cmd := exec.Command("./gencrt.sh", hello.ServerName)
+			cmd.Run()
+
+			crt := fmt.Sprintf("certs/%s.crt", hello.ServerName)
+			key := fmt.Sprintf("certs/%s.key", hello.ServerName)
+			cert, err := tls.LoadX509KeyPair(crt, key)
 			if err != nil {
 				return nil, err
 			}

@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/glaslos/ssdeep"
-	//"io/ioutil"
+	"io/ioutil"
 	"log"
 	"strings"
 	"time"
@@ -65,7 +65,7 @@ func detectPhishingHTTP(subdomain string, domain string, path string) (bool, err
 		return false, err
 	}
 
-	//ioutil.WriteFile(fmt.Sprintf("%s%s.jpg", domain, path), edges, 0644) // Save image for debug purposes
+	ioutil.WriteFile(fmt.Sprintf("%s%s.jpg", domain, path), edges, 0644) // Save image for debug purposes
 
 	hash, err := ssdeep.FuzzyBytes(edges)
 	if err != nil {

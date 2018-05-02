@@ -11,8 +11,7 @@ import (
 var db *sql.DB
 
 const (
-	DB_PATH   = "./data.db"
-	THRESHOLD = 25
+	DB_PATH = "./data.db"
 )
 
 func ConnectDB() {
@@ -60,7 +59,6 @@ func HashMatch(domain string, hash string) string {
 		rows.Scan(&sd, &d, &p, &h)
 		score, _ := ssdeep.Distance(h, hash)
 		if score >= THRESHOLD {
-			log.Printf("Site match: %s.%s/%s\n", sd, d, p)
 			return fmt.Sprintf("%s.%s/%s", sd, d, p)
 		}
 	}
@@ -75,7 +73,6 @@ func DomainStatus(domain string) int {
 	for rows.Next() {
 		rows.Scan(&safe)
 		if safe == 0 {
-			log.Printf("Site match: %s\n")
 			return 1
 		}
 		return 2

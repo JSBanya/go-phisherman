@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os/exec"
+	"regexp"
 	"strings"
 )
 
@@ -31,14 +32,14 @@ func proxyHTTPs(w http.ResponseWriter, r *http.Request) {
 
 	hijacker, ok := w.(http.Hijacker)
 	if !ok {
-		http.Error(w, "", http.StatusInternalServerError)
+		log.Printf("Error: %s", err)
 		return
 	}
 
 	client_conn, _, err := hijacker.Hijack()
 	if err != nil {
-		log.Printf("%s", err)
-		http.Error(w, "", http.StatusServiceUnavailable)
+		log.Printf("Error: %s", err)
+		return
 	}
 
 	// Enable encryption/decryption of TLS data to/from client
@@ -54,6 +55,7 @@ func proxyHTTPs(w http.ResponseWriter, r *http.Request) {
 			key := fmt.Sprintf("certs/%s.key", hello.ServerName)
 			cert, err := tls.LoadX509KeyPair(crt, key)
 			if err != nil {
+				log.Printf("Fatal certificate error: %s", err)
 				return nil, err
 			}
 			return &cert, nil
@@ -61,13 +63,62 @@ func proxyHTTPs(w http.ResponseWriter, r *http.Request) {
 	}
 	client_tls_conn := tls.Server(client_conn, config)
 
-	// Forward communication in both directions
-	go io.Copy(dest_conn, client_tls_conn)
-	io.Copy(client_tls_conn, dest_conn)
+	defer dest_conn.Close()
+	defer client_conn.Close()
+	defer client_tls_conn.Close()
 
-	dest_conn.Close()
-	client_conn.Close()
-	client_tls_conn.Close()
+	// Intercept and extract header data
+	buffer := make([]byte, 1024)
+	client_tls_conn.Read(buffer)
+
+	requestLine := regexp.MustCompile(`^\S+\s\S+\sHTTP\/.+`) // GET /tutorials/other/top-20-mysql-best-practices/ HTTP/1.1
+	hostLine := regexp.MustCompile(`Host:\s.+`)              // Host: net.tutsplus.com
+
+	reqlines := strings.Split(requestLine.FindString(string(buffer)), " ")
+	path := ""
+	if len(reqlines) == 3 {
+		path = reqlines[1]
+	}
+	host := strings.Trim(strings.TrimSpace(strings.Trim(hostLine.FindString(string(buffer)), "Host: ")), "\n")
+	host = strings.Trim(host, "/")
+	path = strings.Trim(strings.TrimSpace(path), "/")
+
+	url := fmt.Sprintf("%s/%s", host, path)
+
+	// Check cache status
+	isPhishing, isCached := cache[url]
+
+	// Get the HTML from the site if it was a GET request
+	if !isCached && len(reqlines) == 3 && reqlines[0] == "GET" {
+		isPhishing, err = detectPhishing("https://", host, path)
+		if err != nil {
+			log.Printf("HTTPs Detect Phishing Error: %s", err)
+			return
+		}
+	}
+
+	if isPhishing {
+		// Phishing attempt detected
+		logDetection(url)
+		warning := bytes.NewBuffer([]byte(fmt.Sprintf(WARNING_PAGE, url)))
+		io.Copy(client_tls_conn, warning)
+		return
+	}
+
+	// Forward the read bytes
+	io.Copy(dest_conn, bytes.NewBuffer(buffer))
+
+	// Forward communication in both directions
+	zero := make([]byte, 0)
+	if _, err = client_tls_conn.Read(zero); err == nil {
+		// Only continue copying from client->dest if the connection is not already closed
+		go io.Copy(dest_conn, client_tls_conn)
+	}
+
+	if _, err = dest_conn.Read(zero); err == nil {
+		// Only copy from dest->client if the connection is not already closed
+		io.Copy(client_tls_conn, dest_conn)
+	}
 }
 
 func proxyHTTP(w http.ResponseWriter, req *http.Request) {
@@ -77,32 +128,9 @@ func proxyHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// Split the URL into subdomain, domain, and path
-	subdomainList := strings.Split(req.URL.Hostname(), ".")
-	if len(subdomainList) < 2 {
-		http.Error(w, "Phisherman: Unprocessable domain name.", http.StatusInternalServerError)
-		return
-	}
-
-	domain := fmt.Sprintf("%s.%s", subdomainList[len(subdomainList)-2], subdomainList[len(subdomainList)-1])
-	subdomainList = subdomainList[0 : len(subdomainList)-2] // Trim whatever is not included in the domain
-
-	if tldlist[domain] {
-		// Last two segments are a top level domain (i.e. co.uk)
-		// Append the previous segment if it exists
-		if len(subdomainList) > 0 {
-			domain = fmt.Sprintf("%s.%s", subdomainList[len(subdomainList)-1], domain)
-			subdomainList = subdomainList[0 : len(subdomainList)-1]
-		}
-	}
-
-	subdomain := strings.Join(subdomainList, ".")
+	domain := strings.Trim(req.URL.Hostname(), "/")
 	path := strings.Trim(strings.TrimSpace(req.URL.Path), "/")
-
 	url := fmt.Sprintf("%s/%s", domain, path)
-	if subdomain != "" {
-		url = fmt.Sprintf("%s.%s", subdomain, url)
-	}
 
 	// Check cached status
 	isPhishing, isCached := cache[url]
@@ -111,7 +139,7 @@ func proxyHTTP(w http.ResponseWriter, req *http.Request) {
 	if !isCached {
 		contentType := strings.TrimSpace(strings.Split(resp.Header.Get("Content-type"), ";")[0])
 		if contentType == "text/html" || contentType == "text/plain" || contentType == "" {
-			isPhishing, err = detectPhishingHTTP(subdomain, domain, path)
+			isPhishing, err = detectPhishing("http://", domain, path)
 			if err != nil {
 				log.Printf("Error: %s\n", err)
 				http.Error(w, "Phisherman: Unable to process webpage", http.StatusInternalServerError)
@@ -122,6 +150,7 @@ func proxyHTTP(w http.ResponseWriter, req *http.Request) {
 
 	if isPhishing {
 		// Phishing attempt detected
+		logDetection(url)
 		warning := bytes.NewBuffer([]byte(fmt.Sprintf(WARNING_PAGE, url)))
 		w.Header().Set("Content-type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusForbidden)

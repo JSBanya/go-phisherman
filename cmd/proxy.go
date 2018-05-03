@@ -101,20 +101,25 @@ func proxyHTTPs(w http.ResponseWriter, r *http.Request) {
 	url := fmt.Sprintf("%s/%s", host, path)
 
 	// Get the HTML from the site if it was a GET request
-	var isPhishing bool
+	var match Match
 	if !cache.IsCached(url) {
 		if reqlines[0] == "GET" {
-			isPhishing, err = detectPhishing("https://", host, path)
+			match, err = detectPhishing("https://", host, path)
 			if err != nil {
 				log.Printf("HTTPs Detect Phishing Error: %s", err)
 				return
 			}
 		}
 	} else {
-		isPhishing = cache.IsPhishing(url)
+		match = Match{
+			IsPhishing: cache.IsPhishing(url),
+			URL:        "(unknown)",
+			HashType:   -1,
+			Score:      -1,
+		}
 	}
 
-	if isPhishing {
+	if match.IsPhishing {
 		// Phishing attempt detected
 		logDetection(url)
 		warning := bytes.NewBuffer([]byte(fmt.Sprintf(WARNING_PAGE, url)))
@@ -160,13 +165,13 @@ func proxyHTTP(w http.ResponseWriter, req *http.Request) {
 
 	url := fmt.Sprintf("%s/%s", domain, path)
 
-	var isPhishing bool
+	var match Match
 
 	// If not cached, scan the page (even if it exists in the database)
 	if !cache.IsCached(url) {
 		contentType := strings.TrimSpace(strings.Split(resp.Header.Get("Content-type"), ";")[0])
 		if contentType == "text/html" || contentType == "text/plain" || contentType == "" {
-			isPhishing, err = detectPhishing("http://", domain, path)
+			match, err = detectPhishing("http://", domain, path)
 			if err != nil {
 				log.Printf("Error: %s\n", err)
 				http.Error(w, "Phisherman: Unable to process webpage", http.StatusInternalServerError)
@@ -174,10 +179,15 @@ func proxyHTTP(w http.ResponseWriter, req *http.Request) {
 			}
 		}
 	} else {
-		isPhishing = cache.IsPhishing(url)
+		match = Match{
+			IsPhishing: cache.IsPhishing(url),
+			URL:        "(unknown)",
+			HashType:   -1,
+			Score:      -1,
+		}
 	}
 
-	if isPhishing {
+	if match.IsPhishing {
 		// Phishing attempt detected
 		logDetection(url)
 		warning := bytes.NewBuffer([]byte(fmt.Sprintf(WARNING_PAGE, url)))

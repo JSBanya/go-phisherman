@@ -26,6 +26,13 @@ const (
 	COLOR_RESET    = "\u001b[0m"
 )
 
+type Match struct {
+	IsPhishing bool
+	URL        string
+	HashType   int
+	Score      int
+}
+
 var cache *Cache
 
 // Detects phishing for the given domain and path
@@ -33,11 +40,13 @@ var cache *Cache
 // Path and domain should both be trimmed of '/' by the caller
 // The result of this function may impact the status of the cache and the database
 // Returns true if the site is detected as phishing, and false otherwise.
-func detectPhishing(proto string, domain string, path string) (bool, error) {
+func detectPhishing(proto string, domain string, path string) (Match, error) {
+	var match Match
+
 	// Split domain into subdomain
 	subdomainList := strings.Split(domain, ".")
 	if len(subdomainList) < 2 {
-		return false, fmt.Errorf("Phisherman: Unprocessable domain name: %s.", domain)
+		return match, fmt.Errorf("Phisherman: Unprocessable domain name: %s.", domain)
 	}
 
 	domain = fmt.Sprintf("%s.%s", subdomainList[len(subdomainList)-2], subdomainList[len(subdomainList)-1])
@@ -63,77 +72,108 @@ func detectPhishing(proto string, domain string, path string) (bool, error) {
 	html, err := fetchHTML(fmt.Sprintf("%s%s", proto, url))
 	if err != nil && err.Error() == "Non-HTML content" {
 		cache.SetValue(url, false)
-		return false, nil
+		return match, nil
 	} else if err != nil {
 		// Note that we do not return nil in this case
-		return false, err
+		return match, err
 	}
 
 	if len(html) < 4096 {
 		// SSDeep enforced a min length of 4096 bytes
 		// It is unlikely that a phishing website will be smaller than this anyway
 		cache.SetValue(url, false)
-		return false, nil
+		return match, nil
 	}
 
 	// Get the image of the page
 	binaryImg, err := getImageFromURL(fmt.Sprintf("%s%s", proto, url))
 	if err != nil {
-		return false, fmt.Errorf("ImageFromURL error: %s", err)
+		return match, fmt.Errorf("ImageFromURL error: %s", err)
 	}
 
-	_, err = getImageEdges(binaryImg)
+	edges, err := getImageEdges(binaryImg)
 	if err != nil {
-		return false, fmt.Errorf("GetImageEdges error: %s", err)
+		return match, fmt.Errorf("GetImageEdges error: %s", err)
 	}
 
-	//binaryPixels, _ := imageToPixels(binaryImg)
-	//edgesPixels, _ := imageToPixels(binaryImg)
+	binaryPixels, _ := imageToPixels(binaryImg)
+	edgesPixels, _ := imageToPixels(edges)
 
 	//ioutil.WriteFile(fmt.Sprintf("%s.jpg", strings.Replace(url, "/", "", -1)), head, 0644) // Save image for debug purposes
 
-	hash, err := ssdeep.FuzzyBytes(html)
+	hash_html, err := ssdeep.FuzzyBytes(html)
 	if err != nil {
-		return false, err
+		hash_html = ""
+		log.Printf("Error hashing html: %s\n", err)
+	}
+
+	hash_image, err := ssdeep.FuzzyBytes(binaryPixels)
+	if err != nil {
+		hash_image = ""
+		log.Printf("Error hashing image: %s\n", err)
+	}
+
+	hash_edges, err := ssdeep.FuzzyBytes(edgesPixels)
+	if err != nil {
+		hash_edges = ""
+		log.Printf("Error hashing edges: %s\n", err)
 	}
 
 	switch DomainStatus(domain) {
 	case 0: // Domain not in db
-		match := HashMatch(domain, hash)
-		if match == "" {
-			InsertHash(subdomain, domain, path, hash, 1)
-			return false, nil
+		url, hashtype, score := HashMatch(domain, hash_html, hash_image, hash_edges)
+		if url == "" {
+			InsertHashes(subdomain, domain, path, hash_html, hash_image, hash_edges, 1)
+			return match, nil
 		} else {
 			UpdateDomainStatus(domain, 0)
-			InsertHash(subdomain, domain, path, hash, 0)
+			InsertHashes(subdomain, domain, path, hash_html, hash_image, hash_edges, 0)
 
 			cache.SetValue(url, true)
-			return true, nil
+			match = Match{
+				IsPhishing: true,
+				URL:        url,
+				HashType:   hashtype,
+				Score:      score,
+			}
+			return match, nil
 		}
 	case 1: // Domain was previously marked as unsafe
 		{
 			cache.SetValue(url, true)
-			return true, nil
+			match = Match{
+				IsPhishing: true,
+				URL:        "(unknown)",
+				HashType:   -1,
+				Score:      -1,
+			}
+			return match, nil
 		}
 	case 2: // Domain was previously marked as safe
 		{
 			if SiteExistsDB(subdomain, domain, path) {
 				cache.SetValue(url, false)
-				return false, nil
+				return match, nil
 			}
-			match := HashMatch(domain, hash)
-			if match == "" {
-				InsertHash(subdomain, domain, path, hash, 1)
-				return false, nil
+			url, hashtype, score := HashMatch(domain, hash_html, hash_image, hash_edges)
+			if url == "" {
+				InsertHashes(subdomain, domain, path, hash_html, hash_image, hash_edges, 1)
+				return match, nil
 			}
 			UpdateDomainStatus(domain, 0)
-			InsertHash(subdomain, domain, path, hash, 0)
+			InsertHashes(subdomain, domain, path, hash_html, hash_image, hash_edges, 0)
 			cache.SetValue(url, true)
-			return true, nil
+			match = Match{
+				IsPhishing: true,
+				URL:        url,
+				HashType:   hashtype,
+				Score:      score,
+			}
+			return match, nil
 		}
 	}
 
-	return false, nil
+	return match, nil
 }
 
 func fetchHTML(url string) ([]byte, error) {

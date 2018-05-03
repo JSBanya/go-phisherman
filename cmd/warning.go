@@ -26,6 +26,7 @@ const WARNING_PAGE = `
 		</style>
 	</head>
 	<body>
+		<img src="https://www.dropbox.com/s/umk0c5vujhkg1qw/logo.png?raw=1">
 		<h1>Site Blocked by PhisherMan!</h1>
 		<p><strong>%s</strong> was detected to be a possible phishing site and was blocked.</p>
 		<p>If you feel that this is a mistake, click <a href="">here</a> to submit a request to unblock the site to your system administrator.</p>

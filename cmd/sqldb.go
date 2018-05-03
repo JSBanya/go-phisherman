@@ -12,11 +12,15 @@ var db *sql.DB
 
 const (
 	DB_PATH = "./data.db"
+	// hashtypes
+	HASH_HTML  = 0
+	HASH_IMAGE = 1
+	HASH_EDGES = 2
 )
 
 func ConnectDB() {
 	db, _ = sql.Open("sqlite3", DB_PATH)
-	statement, _ := db.Prepare("CREATE TABLE IF NOT EXISTS hashes (subdomain VARCHAR(128), domain VARCHAR(128), path CARCHAR(128), hash VARCHAR(128), safe INT)")
+	statement, _ := db.Prepare("CREATE TABLE IF NOT EXISTS hashes (subdomain VARCHAR(128), domain VARCHAR(128), path CARCHAR(128), hashtype INT, hash VARCHAR(128), safe INT)")
 	statement.Exec()
 }
 
@@ -25,19 +29,33 @@ func CloseDB() {
 }
 
 // Stores hash for the domain
-func InsertHash(subdomain string, domain string, path string, hash string, safe int) {
-	rows, _ := db.Query("SELECT hash FROM hashes WHERE subdomain=? AND domain=? AND path=?", subdomain, domain, path)
+func InsertHash(subdomain, domain, path, hash_html, hash_image, hash_edges string, safe int) {
+	rows, _ := db.Query("SELECT hashtype, hash FROM hashes WHERE subdomain=? AND domain=? AND path=?", subdomain, domain, path)
 	defer rows.Close()
+	var t int
 	var h string
 	for rows.Next() {
-		rows.Scan(&h)
-		if h == hash {
+		rows.Scan(&t, &h)
+		if ((t == HASH_HTML) && (h == hash_html)) ||
+			((t == HASH_IMAGE) && (h == hash_image)) ||
+			((t == HASH_EDGES) && (h == hash_edges)) {
 			return
 		}
 	}
 
-	statement, _ := db.Prepare("INSERT INTO hashes (subdomain, domain, path, hash, safe) VALUES (?, ?, ?, ?, ?)")
-	_, err := statement.Exec(subdomain, domain, path, hash, safe)
+	statement, _ := db.Prepare("INSERT INTO hashes (subdomain, domain, path, hashtype, hash, safe) VALUES (?, ?, ?, ?, ?, ?)")
+
+	_, err := statement.Exec(subdomain, domain, path, HASH_HTML, hash_html, safe)
+	if err != nil {
+		log.Printf("Error: %v\n", err)
+	}
+
+	_, err = statement.Exec(subdomain, domain, path, HASH_IMAGE, hash_image, safe)
+	if err != nil {
+		log.Printf("Error: %v\n", err)
+	}
+
+	_, err = statement.Exec(subdomain, domain, path, HASH_EDGES, hash_edges, safe)
 	if err != nil {
 		log.Printf("Error: %v\n", err)
 	}
@@ -51,18 +69,33 @@ func UpdateDomainStatus(domain string, safe int) {
 	}
 }
 
-func HashMatch(domain string, hash string) string {
-	rows, _ := db.Query("SELECT subdomain, domain, path, hash FROM hashes WHERE domain<>?", domain)
+func HashMatch(domain, hash_html, hash_image, hash_edges string) (string, int, int) {
+	rows, _ := db.Query("SELECT subdomain, domain, path, hashtype, hash FROM hashes WHERE domain<>?", domain)
 	defer rows.Close()
 	var sd, d, p, h string
+	var t int
+	var matches int
 	for rows.Next() {
-		rows.Scan(&sd, &d, &p, &h)
-		score, _ := ssdeep.Distance(h, hash)
-		if score >= THRESHOLD {
-			return fmt.Sprintf("%s.%s/%s", sd, d, p)
+		rows.Scan(&sd, &d, &p, &t, &h)
+		switch t {
+		case HASH_HTML:
+			score, _ := ssdeep.Distance(h, hash_html)
+			if score >= THRESHOLD_HTML {
+				return fmt.Sprintf("%s.%s/%s", sd, d, p), HASH_HTML, score
+			}
+		case HASH_IMAGE:
+			score, _ := ssdeep.Distance(h, hash_image)
+			if score >= THRESHOLD_IMAGE {
+				return fmt.Sprintf("%s.%s/%s", sd, d, p), HASH_IMAGE, score
+			}
+		case HASH_EDGES:
+			score, _ := ssdeep.Distance(h, hash_edges)
+			if score >= THRESHOLD_EDGES {
+				return fmt.Sprintf("%s.%s/%s", sd, d, p), HASH_EDGES, score
+			}
 		}
 	}
-	return ""
+	return "", 0, 0
 }
 
 // Returns 0 if domain not in db, 1 if marked as unsafe, and 2 if marked as safe

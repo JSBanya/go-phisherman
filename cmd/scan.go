@@ -14,7 +14,9 @@ import (
 )
 
 const (
-	THRESHOLD            = 25
+	THRESHOLD_HTML       = 25
+	THRESHOLD_IMAGE      = 25
+	THRESHOLD_EDGES      = 25
 	CACHE_CLEAR_INTERVAL = 60 * 60 * 24 // Seconds
 
 	COLOR_DETECTED = "\u001b[31m\u001b[1m"

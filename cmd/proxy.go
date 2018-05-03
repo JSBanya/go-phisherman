@@ -61,7 +61,7 @@ func proxyHTTPs(w http.ResponseWriter, r *http.Request) {
 			key := fmt.Sprintf("certs/%s.key", hello.ServerName)
 			cert, err := tls.LoadX509KeyPair(crt, key)
 			if err != nil {
-				log.Printf("Fatal certificate error: %s", err)
+				log.Printf("Fatal certificate error for %s: %s", hello.ServerName, err)
 				return nil, err
 			}
 			return &cert, nil

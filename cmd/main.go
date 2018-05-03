@@ -46,9 +46,11 @@ func main() {
 	// Start the serevr
 	log.Printf("Starting Phisherman on port %s.", port)
 
-	scannerInit()
 	ConnectDB()
 	defer CloseDB()
+
+	cache = CreateCache()
+	go clearCache()
 
 	log.Fatal(server.ListenAndServe())
 }

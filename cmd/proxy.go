@@ -21,6 +21,12 @@ func proxyConnection(w http.ResponseWriter, r *http.Request) {
 }
 
 func proxyHTTPs(w http.ResponseWriter, r *http.Request) {
+	defer func() {
+		if r := recover(); r != nil {
+			logError(fmt.Sprintf("%s", r))
+		}
+	}()
+
 	// Establish connection
 	dest_conn, err := tls.Dial("tcp", r.Host, nil)
 	if err != nil {
@@ -85,16 +91,18 @@ func proxyHTTPs(w http.ResponseWriter, r *http.Request) {
 
 	url := fmt.Sprintf("%s/%s", host, path)
 
-	// Check cache status
-	isPhishing, isCached := cache[url]
-
 	// Get the HTML from the site if it was a GET request
-	if !isCached && len(reqlines) == 3 && reqlines[0] == "GET" {
-		isPhishing, err = detectPhishing("https://", host, path)
-		if err != nil {
-			log.Printf("HTTPs Detect Phishing Error: %s", err)
-			return
+	var isPhishing bool
+	if !cache.IsCached(url) {
+		if len(reqlines) == 3 && reqlines[0] == "GET" {
+			isPhishing, err = detectPhishing("https://", host, path)
+			if err != nil {
+				log.Printf("HTTPs Detect Phishing Error: %s", err)
+				return
+			}
 		}
+	} else {
+		isPhishing = cache.IsPhishing(url)
 	}
 
 	if isPhishing {
@@ -122,6 +130,12 @@ func proxyHTTPs(w http.ResponseWriter, r *http.Request) {
 }
 
 func proxyHTTP(w http.ResponseWriter, req *http.Request) {
+	defer func() {
+		if r := recover(); r != nil {
+			logError(fmt.Sprintf("%s", r))
+		}
+	}()
+
 	resp, err := http.DefaultTransport.RoundTrip(req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusServiceUnavailable)
@@ -132,11 +146,10 @@ func proxyHTTP(w http.ResponseWriter, req *http.Request) {
 	path := strings.Trim(strings.TrimSpace(req.URL.Path), "/")
 	url := fmt.Sprintf("%s/%s", domain, path)
 
-	// Check cached status
-	isPhishing, isCached := cache[url]
+	var isPhishing bool
 
 	// If not cached, scan the page (even if it exists in the database)
-	if !isCached {
+	if !cache.IsCached(url) {
 		contentType := strings.TrimSpace(strings.Split(resp.Header.Get("Content-type"), ";")[0])
 		if contentType == "text/html" || contentType == "text/plain" || contentType == "" {
 			isPhishing, err = detectPhishing("http://", domain, path)
@@ -146,6 +159,8 @@ func proxyHTTP(w http.ResponseWriter, req *http.Request) {
 				return
 			}
 		}
+	} else {
+		isPhishing = cache.IsPhishing(url)
 	}
 
 	if isPhishing {

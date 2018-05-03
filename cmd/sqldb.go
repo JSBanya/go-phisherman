@@ -69,7 +69,7 @@ func UpdateDomainStatus(domain string, safe int) {
 	}
 }
 
-func HashMatch(domain, hash_html, hash_image, hash_edges string) (string, int, int) {
+func HashMatch(domain, hash_html, hash_image, hash_edges string) (string, string, int) {
 	rows, _ := db.Query("SELECT subdomain, domain, path, hashtype, hash FROM hashes WHERE domain<>?", domain)
 	defer rows.Close()
 	var sd, d, p, h string
@@ -82,8 +82,7 @@ func HashMatch(domain, hash_html, hash_image, hash_edges string) (string, int, i
 				score, _ := ssdeep.Distance(h, hash_html)
 				log.Printf("%sScore %s%s vs %s = %v%s", COLOR_ERROR, d, p, domain, score, COLOR_RESET)
 				if score >= THRESHOLD_HTML {
-					log.Printf("%sMATCH: %v%s", COLOR_ERROR, score, COLOR_RESET)
-					return fmt.Sprintf("%s.%s/%s", sd, d, p), HASH_HTML, score
+					return fmt.Sprintf("%s.%s/%s", sd, d, p), "HTML", score
 				}
 			}
 		case HASH_IMAGE:
@@ -92,7 +91,7 @@ func HashMatch(domain, hash_html, hash_image, hash_edges string) (string, int, i
 				log.Printf("%sScore %s%s vs %s = %v%s", COLOR_ERROR, d, p, domain, score, COLOR_RESET)
 				if score >= THRESHOLD_IMAGE {
 					log.Printf("%sMATCH: %v%s", COLOR_ERROR, score, COLOR_RESET)
-					return fmt.Sprintf("%s.%s/%s", sd, d, p), HASH_IMAGE, score
+					return fmt.Sprintf("%s.%s/%s", sd, d, p), "IMAGE", score
 				}
 			}
 		case HASH_EDGES:
@@ -101,12 +100,12 @@ func HashMatch(domain, hash_html, hash_image, hash_edges string) (string, int, i
 				log.Printf("%sScore %s%s vs %s = %v%s", COLOR_ERROR, d, p, domain, score, COLOR_RESET)
 				if score >= THRESHOLD_EDGES {
 					log.Printf("%sMATCH: %v%s", COLOR_ERROR, score, COLOR_RESET)
-					return fmt.Sprintf("%s.%s/%s", sd, d, p), HASH_EDGES, score
+					return fmt.Sprintf("%s.%s/%s", sd, d, p), "EDGE", score
 				}
 			}
 		}
 	}
-	return "", 0, 0
+	return "", "", 0
 }
 
 // Returns 0 if domain not in db, 1 if marked as unsafe, and 2 if marked as safe

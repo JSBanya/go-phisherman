@@ -29,7 +29,7 @@ const (
 type Match struct {
 	IsPhishing bool
 	URL        string
-	HashType   int
+	HashType   string
 	Score      int
 }
 
@@ -71,6 +71,7 @@ func detectPhishing(proto string, domain string, path string) (Match, error) {
 	// Get the HTML from the page
 	html, err := fetchHTML(fmt.Sprintf("%s%s", proto, url))
 	if err != nil && err.Error() == "Non-HTML content" {
+		//log.Printf("Non-HTML content for %s\n", url)
 		cache.SetValue(url, false)
 		return match, nil
 	} else if err != nil {
@@ -81,6 +82,7 @@ func detectPhishing(proto string, domain string, path string) (Match, error) {
 	if len(html) < 4096 {
 		// SSDeep enforced a min length of 4096 bytes
 		// It is unlikely that a phishing website will be smaller than this anyway
+		//log.Printf("HTML too small to process for %s\n", url)
 		cache.SetValue(url, false)
 		return match, nil
 	}
@@ -144,7 +146,7 @@ func detectPhishing(proto string, domain string, path string) (Match, error) {
 			match = Match{
 				IsPhishing: true,
 				URL:        "(unknown)",
-				HashType:   -1,
+				HashType:   "UNKNOWN",
 				Score:      -1,
 			}
 			return match, nil
@@ -215,7 +217,8 @@ func fetchHTML(url string) ([]byte, error) {
 		return []byte{}, err
 	}
 
-	detectedType := http.DetectContentType(body)
+	detectedType := strings.TrimSpace(strings.Split(http.DetectContentType(body), ";")[0])
+	//log.Printf("Content-Type for %s is %s\n", url, detectedType)
 	if detectedType != "text/html" {
 		return []byte{}, fmt.Errorf("Non-HTML content")
 	}

@@ -11,6 +11,7 @@ fetch:
 	go get github.com/mattn/go-sqlite3
 	go get github.com/glaslos/ssdeep
 	go get github.com/anthonynsimon/bild/effect
+	go get github.com/anthonynsimon/bild/transform
 
 install:
 	go install github.com/mattn/go-sqlite3

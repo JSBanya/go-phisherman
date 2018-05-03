@@ -58,7 +58,9 @@ func HashMatch(domain string, hash string) string {
 	for rows.Next() {
 		rows.Scan(&sd, &d, &p, &h)
 		score, _ := ssdeep.Distance(h, hash)
+		log.Printf("%sScore %s%s vs %s = %v%s", COLOR_ERROR, d, p, domain, score, COLOR_RESET)
 		if score >= THRESHOLD {
+			log.Printf("%sMATCH: %v%s", COLOR_ERROR, score, COLOR_RESET)
 			return fmt.Sprintf("%s.%s/%s", sd, d, p)
 		}
 	}

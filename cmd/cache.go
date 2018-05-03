@@ -39,6 +39,13 @@ func (c *Cache) SetValue(url string, value bool) {
 	c.content[url] = value
 }
 
+func (c *Cache) GetSize() int {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+
+	return len(c.content)
+}
+
 func (c *Cache) Clear() {
 	c.mux.Lock()
 	defer c.mux.Unlock()

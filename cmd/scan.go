@@ -14,8 +14,10 @@ import (
 )
 
 const (
-	THRESHOLD            = 25
+	THRESHOLD = 25
+
 	CACHE_CLEAR_INTERVAL = 60 * 60 * 24 // Seconds
+	CACHE_CLEAR_SIZE     = 10000        // Entries
 
 	COLOR_DETECTED = "\u001b[31m\u001b[1m"
 	COLOR_ERROR    = "\u001b[33m"
@@ -57,12 +59,12 @@ func detectPhishing(proto string, domain string, path string) (bool, error) {
 
 	// Get the HTML from the page
 	html, err := fetchHTML(fmt.Sprintf("%s%s", proto, url))
-	if err != nil && err.Error() == "Non-HTML content." {
+	if err != nil && err.Error() == "Non-HTML content" {
 		cache.SetValue(url, false)
 		return false, nil
 	} else if err != nil {
 		// Note that we do not return nil in this case
-		return false, nil
+		return false, err
 	}
 
 	if len(html) < 4096 {
@@ -73,31 +75,22 @@ func detectPhishing(proto string, domain string, path string) (bool, error) {
 	}
 
 	// Get the image of the page
-	binaryImg, err := getImageFromUrl(url)
+	binaryImg, err := getImageFromURL(fmt.Sprintf("%s%s", proto, url))
 	if err != nil {
-		// Unable to get webpage image
-		return false, err
+		return false, fmt.Errorf("ImageFromURL error: %s", err)
 	}
 
-	if len(binaryImg) < 4096 {
-		cache.SetValue(url, false)
-		return false, nil
-	}
-
-	edges, err := getImageEdges(binaryImg)
+	_, err = getImageEdges(binaryImg)
 	if err != nil {
-		log.Printf("Image edge detection error: %s\n", err)
-		return false, err
+		return false, fmt.Errorf("GetImageEdges error: %s", err)
 	}
 
-	if len(edges) < 4096 {
-		cache.SetValue(url, false)
-		return false, nil
-	}
+	//binaryPixels, _ := imageToPixels(binaryImg)
+	//edgesPixels, _ := imageToPixels(binaryImg)
 
-	//ioutil.WriteFile(fmt.Sprintf("%s%s.jpg", domain, path), edges, 0644) // Save image for debug purposes
+	//ioutil.WriteFile(fmt.Sprintf("%s.jpg", strings.Replace(url, "/", "", -1)), head, 0644) // Save image for debug purposes
 
-	hash, err := ssdeep.FuzzyBytes(edges)
+	hash, err := ssdeep.FuzzyBytes(html)
 	if err != nil {
 		return false, err
 	}
@@ -158,7 +151,7 @@ func fetchHTML(url string) ([]byte, error) {
 
 	contentType := strings.TrimSpace(strings.Split(response.Header.Get("Content-type"), ";")[0])
 	if contentType != "text/html" && contentType != "text/plain" && contentType != "" {
-		return []byte{}, fmt.Errorf("Non-HTML content.")
+		return []byte{}, fmt.Errorf("Non-HTML content")
 	}
 
 	// Handle encoding
@@ -175,7 +168,17 @@ func fetchHTML(url string) ([]byte, error) {
 		reader = response.Body
 	}
 
-	return ioutil.ReadAll(reader)
+	body, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	detectedType := http.DetectContentType(body)
+	if detectedType != "text/html" {
+		return []byte{}, fmt.Errorf("Non-HTML content")
+	}
+
+	return body, nil
 }
 
 func logDetection(url string) {
@@ -186,10 +189,22 @@ func logError(err string) {
 	log.Printf("%s%s%s", COLOR_ERROR, err, COLOR_RESET)
 }
 
-func clearCache() {
+// Clears the cache every set interval
+func clearCacheOnInterval() {
 	for {
 		time.Sleep(CACHE_CLEAR_INTERVAL * time.Second)
-		log.Printf("Clearing cache...")
+		log.Printf("Clearing cache (interval)...")
 		cache.Clear()
+	}
+}
+
+// Clears the cache if the cache grows to be greater than a predefined size
+func clearCacheOnSize() {
+	for {
+		time.Sleep(10 * time.Second)
+		if cache.GetSize() > CACHE_CLEAR_SIZE {
+			log.Printf("Clearing cache (size)...")
+			cache.Clear()
+		}
 	}
 }

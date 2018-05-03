@@ -88,16 +88,22 @@ func proxyHTTPs(w http.ResponseWriter, r *http.Request) {
 	if len(reqlines) == 3 {
 		path = reqlines[1]
 	}
-	host := strings.Trim(strings.TrimSpace(strings.Trim(hostLine.FindString(string(buffer)), "Host: ")), "\n")
+
+	host := strings.Trim(strings.TrimSpace(strings.TrimPrefix(hostLine.FindString(string(buffer)), "Host: ")), "\n")
 	host = strings.Trim(host, "/")
 	path = strings.Trim(strings.TrimSpace(path), "/")
+
+	pathSplit := strings.Split(path, "?")
+	if len(pathSplit) > 1 {
+		path = pathSplit[0]
+	}
 
 	url := fmt.Sprintf("%s/%s", host, path)
 
 	// Get the HTML from the site if it was a GET request
 	var isPhishing bool
 	if !cache.IsCached(url) {
-		if len(reqlines) == 3 && reqlines[0] == "GET" {
+		if reqlines[0] == "GET" {
 			isPhishing, err = detectPhishing("https://", host, path)
 			if err != nil {
 				log.Printf("HTTPs Detect Phishing Error: %s", err)
@@ -147,6 +153,11 @@ func proxyHTTP(w http.ResponseWriter, req *http.Request) {
 
 	domain := strings.Trim(req.URL.Hostname(), "/")
 	path := strings.Trim(strings.TrimSpace(req.URL.Path), "/")
+	pathSplit := strings.Split(path, "?")
+	if len(pathSplit) > 1 {
+		path = pathSplit[0]
+	}
+
 	url := fmt.Sprintf("%s/%s", domain, path)
 
 	var isPhishing bool

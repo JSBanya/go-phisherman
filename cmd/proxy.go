@@ -75,7 +75,10 @@ func proxyHTTPs(w http.ResponseWriter, r *http.Request) {
 
 	// Intercept and extract header data
 	buffer := make([]byte, 1024)
-	client_tls_conn.Read(buffer)
+	n, err := client_tls_conn.Read(buffer)
+	if err != nil {
+		return
+	}
 
 	requestLine := regexp.MustCompile(`^\S+\s\S+\sHTTP\/.+`) // GET /tutorials/other/top-20-mysql-best-practices/ HTTP/1.1
 	hostLine := regexp.MustCompile(`Host:\s.+`)              // Host: net.tutsplus.com
@@ -114,7 +117,7 @@ func proxyHTTPs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Forward the read bytes
-	io.Copy(dest_conn, bytes.NewBuffer(buffer))
+	io.Copy(dest_conn, bytes.NewBuffer(buffer[0:n]))
 
 	// Forward communication in both directions
 	zero := make([]byte, 0)

@@ -50,7 +50,8 @@ func main() {
 	defer CloseDB()
 
 	cache = CreateCache()
-	go clearCache()
+	go clearCacheOnInterval()
+	go clearCacheOnSize()
 
 	log.Fatal(server.ListenAndServe())
 }

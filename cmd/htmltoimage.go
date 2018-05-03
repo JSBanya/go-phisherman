@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"github.com/anthonynsimon/bild/effect"
+	"github.com/anthonynsimon/bild/transform"
 	"image"
 	"image/jpeg"
 	"os/exec"
@@ -18,16 +19,34 @@ func getWkHtmlToImageVersion() (string, error) {
 
 // Fetches the image of the webpage from the given url
 // We use a jpeg format rather than png to minimize the output size of the image to reduce latency
-func getImageFromUrl(url string) ([]byte, error) {
+func getImageFromURL(url string) ([]byte, error) {
 	cmd := exec.Command("wkhtmltoimage", "-q", "-f", "jpeg", url, "/dev/stdout")
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	err := cmd.Run()
 	if err != nil {
+		return nil, err
+	}
+
+	return out.Bytes(), err
+}
+
+func getPageHead(raw []byte) ([]byte, error) {
+	imageReader := bytes.NewReader(raw)
+	original, _, err := image.Decode(imageReader)
+	if err != nil {
 		return []byte{}, err
 	}
 
-	return out.Bytes(), nil
+	bounds := original.Bounds()
+	result := transform.Crop(original, image.Rect(0, 0, bounds.Dx(), 100))
+
+	buf := new(bytes.Buffer)
+	err = jpeg.Encode(buf, result, nil)
+	if err != nil {
+		return []byte{}, err
+	}
+	return buf.Bytes(), nil
 }
 
 // Returns a image containing only edges
@@ -45,4 +64,31 @@ func getImageEdges(raw []byte) ([]byte, error) {
 		return []byte{}, err
 	}
 	return buf.Bytes(), nil
+}
+
+// Takes the given image binary data and converts to 8-bit image array
+// Returns the array and the width of the image
+func imageToPixels(raw []byte) ([]byte, error) {
+	imageReader := bytes.NewReader(raw)
+	img, _, err := image.Decode(imageReader)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	bounds := img.Bounds()
+	pixels := []byte{}
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			r, g, b, _ := img.At(x, y).RGBA()
+			pixels = append(pixels, colorToByte(r))
+			pixels = append(pixels, colorToByte(g))
+			pixels = append(pixels, colorToByte(b))
+		}
+	}
+
+	return pixels, nil
+}
+
+func colorToByte(col uint32) byte {
+	return byte((col / 0x101) - (col/0x101)%10)
 }

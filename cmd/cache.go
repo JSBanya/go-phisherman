@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"sync"
 )
 
@@ -44,6 +45,15 @@ func (c *Cache) GetSize() int {
 	defer c.mux.Unlock()
 
 	return len(c.content)
+}
+
+func (c *Cache) Print() {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+
+	for k, v := range c.content {
+		fmt.Printf("%v : %v\n", k, v)
+	}
 }
 
 func (c *Cache) Clear() {

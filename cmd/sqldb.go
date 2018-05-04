@@ -80,7 +80,7 @@ func HashMatch(domain, hash_html, hash_image, hash_edges string) (string, string
 		case HASH_HTML:
 			if hash_html != "" {
 				score, _ := ssdeep.Distance(h, hash_html)
-				log.Printf("%sScore %s%s vs %s = %v%s", COLOR_ERROR, d, p, domain, score, COLOR_RESET)
+				log.Printf("%sHTML Score %s%s vs %s = %v%s", COLOR_ERROR, d, p, domain, score, COLOR_RESET)
 				if score >= THRESHOLD_HTML {
 					return fmt.Sprintf("%s.%s/%s", sd, d, p), "HTML", score
 				}
@@ -88,18 +88,16 @@ func HashMatch(domain, hash_html, hash_image, hash_edges string) (string, string
 		case HASH_IMAGE:
 			if hash_image != "" {
 				score, _ := ssdeep.Distance(h, hash_image)
-				log.Printf("%sScore %s%s vs %s = %v%s", COLOR_ERROR, d, p, domain, score, COLOR_RESET)
+				log.Printf("%sImage Score %s%s vs %s = %v%s", COLOR_ERROR, d, p, domain, score, COLOR_RESET)
 				if score >= THRESHOLD_IMAGE {
-					log.Printf("%sMATCH: %v%s", COLOR_ERROR, score, COLOR_RESET)
 					return fmt.Sprintf("%s.%s/%s", sd, d, p), "IMAGE", score
 				}
 			}
 		case HASH_EDGES:
 			if hash_edges != "" {
 				score, _ := ssdeep.Distance(h, hash_edges)
-				log.Printf("%sScore %s%s vs %s = %v%s", COLOR_ERROR, d, p, domain, score, COLOR_RESET)
+				log.Printf("%sEdge Score %s%s vs %s = %v%s", COLOR_ERROR, d, p, domain, score, COLOR_RESET)
 				if score >= THRESHOLD_EDGES {
-					log.Printf("%sMATCH: %v%s", COLOR_ERROR, score, COLOR_RESET)
 					return fmt.Sprintf("%s.%s/%s", sd, d, p), "EDGE", score
 				}
 			}

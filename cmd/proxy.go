@@ -21,11 +21,11 @@ func proxyConnection(w http.ResponseWriter, r *http.Request) {
 }
 
 func proxyHTTPs(w http.ResponseWriter, r *http.Request) {
-	defer func() {
+	/*defer func() {
 		if r := recover(); r != nil {
 			logError(fmt.Sprintf("%s", r))
 		}
-	}()
+	}()*/
 
 	// Establish connection
 	dest_conn, err := tls.Dial("tcp", r.Host, nil)
@@ -111,7 +111,6 @@ func proxyHTTPs(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	} else {
-		log.Printf("%s is cached as phishing=%v\n", url, cache.IsPhishing(url))
 		match = Match{
 			IsPhishing: cache.IsPhishing(url),
 			URL:        "(unknown)",
@@ -122,7 +121,7 @@ func proxyHTTPs(w http.ResponseWriter, r *http.Request) {
 
 	if match.IsPhishing {
 		// Phishing attempt detected
-		logDetection(url)
+		logDetection(url, match)
 		warning := bytes.NewBuffer([]byte(fmt.Sprintf(WARNING_PAGE, url, match.URL, match.HashType, match.Score)))
 		io.Copy(client_tls_conn, warning)
 		return
@@ -190,7 +189,7 @@ func proxyHTTP(w http.ResponseWriter, req *http.Request) {
 
 	if match.IsPhishing {
 		// Phishing attempt detected
-		logDetection(url)
+		logDetection(url, match)
 		warning := bytes.NewBuffer([]byte(fmt.Sprintf(WARNING_PAGE, url, match.URL, match.HashType, match.Score)))
 		w.Header().Set("Content-type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusForbidden)

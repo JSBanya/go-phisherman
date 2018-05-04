@@ -20,7 +20,7 @@ func getWkHtmlToImageVersion() (string, error) {
 // Fetches the image of the webpage from the given url
 // We use a jpeg format rather than png to minimize the output size of the image to reduce latency
 func getImageFromURL(url string) ([]byte, error) {
-	cmd := exec.Command("wkhtmltoimage", "-q", "-f", "jpeg", url, "/dev/stdout")
+	cmd := exec.Command("wkhtmltoimage", "-q", "--height", "1080", "-f", "jpeg", url, "/dev/stdout")
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	err := cmd.Run()
@@ -90,5 +90,8 @@ func imageToPixels(raw []byte) ([]byte, error) {
 }
 
 func colorToByte(col uint32) byte {
-	return byte((col / 0x101) - (col/0x101)%10)
+	unmodded := byte(col / 0x101)
+	mod := byte(unmodded % 10)
+
+	return unmodded - mod
 }

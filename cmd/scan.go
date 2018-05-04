@@ -15,14 +15,16 @@ import (
 
 const (
 	THRESHOLD_HTML  = 25
-	THRESHOLD_IMAGE = 25
-	THRESHOLD_EDGES = 25
+	THRESHOLD_IMAGE = 30
+	THRESHOLD_EDGES = 35
 
 	CACHE_CLEAR_INTERVAL = 60 * 60 * 24 // Seconds
 	CACHE_CLEAR_SIZE     = 10000        // Entries
 
 	COLOR_DETECTED = "\u001b[31m\u001b[1m"
 	COLOR_ERROR    = "\u001b[33m"
+	COLOR_SCAN     = "\u001b[32m"
+	COLOR_CACHE    = "\u001b[36m"
 	COLOR_RESET    = "\u001b[0m"
 )
 
@@ -71,7 +73,7 @@ func detectPhishing(proto string, domain string, path string) (Match, error) {
 	// Get the HTML from the page
 	html, err := fetchHTML(fmt.Sprintf("%s%s", proto, url))
 	if err != nil && err.Error() == "Non-HTML content" {
-		//log.Printf("Non-HTML content for %s\n", url)
+		log.Printf("Non-HTML content for %s\n", url)
 		cache.SetValue(url, false)
 		return match, nil
 	} else if err != nil {
@@ -81,8 +83,8 @@ func detectPhishing(proto string, domain string, path string) (Match, error) {
 
 	if len(html) < 4096 {
 		// SSDeep enforced a min length of 4096 bytes
-		// It is unlikely that a phishing website will be smaller than this anyway
-		//log.Printf("HTML too small to process for %s\n", url)
+		// It is unlikely that a detectable phishing website will be smaller than this anyway
+		log.Printf("HTML too small to process for %s\n", url)
 		cache.SetValue(url, false)
 		return match, nil
 	}
@@ -90,18 +92,18 @@ func detectPhishing(proto string, domain string, path string) (Match, error) {
 	// Get the image of the page
 	binaryImg, err := getImageFromURL(fmt.Sprintf("%s%s", proto, url))
 	if err != nil {
-		return match, fmt.Errorf("ImageFromURL error: %s", err)
+		log.Printf("ImageFromURL error: %s", err)
 	}
 
 	edges, err := getImageEdges(binaryImg)
 	if err != nil {
-		return match, fmt.Errorf("GetImageEdges error: %s", err)
+		log.Printf("GetImageEdges error: %s", err)
 	}
 
 	binaryPixels, _ := imageToPixels(binaryImg)
-	//edgesPixels, _ := imageToPixels(edges)
+	edgesPixels, _ := imageToPixels(edges)
 
-	//ioutil.WriteFile(fmt.Sprintf("%s.jpg", strings.Replace(url, "/", "", -1)), binaryImg, 0644) // Save image for debug purposes
+	//ioutil.WriteFile(fmt.Sprintf("%s.jpg", strings.Replace(url, "/", "", -1)), edges, 0644) // Save image for debug purposes
 
 	hash_html, err := ssdeep.FuzzyBytes(html)
 	if err != nil {
@@ -115,7 +117,7 @@ func detectPhishing(proto string, domain string, path string) (Match, error) {
 		log.Printf("Error hashing image: %s\n", err)
 	}
 
-	hash_edges, err := ssdeep.FuzzyBytes(edges)
+	hash_edges, err := ssdeep.FuzzyBytes(edgesPixels)
 	if err != nil {
 		hash_edges = ""
 		log.Printf("Error hashing edges: %s\n", err)
@@ -195,11 +197,6 @@ func fetchHTML(url string) ([]byte, error) {
 	}
 	defer response.Body.Close()
 
-	contentType := strings.TrimSpace(strings.Split(response.Header.Get("Content-type"), ";")[0])
-	if contentType != "text/html" && contentType != "text/plain" && contentType != "" {
-		return []byte{}, fmt.Errorf("Non-HTML content")
-	}
-
 	// Handle encoding
 	var reader io.Reader
 	switch response.Header.Get("Content-Encoding") {
@@ -240,7 +237,7 @@ func logError(err string) {
 func clearCacheOnInterval() {
 	for {
 		time.Sleep(CACHE_CLEAR_INTERVAL * time.Second)
-		log.Printf("Clearing cache (interval)...")
+		log.Printf("%sClearing cache (interval)...%s", COLOR_CACHE, COLOR_RESET)
 		cache.Clear()
 	}
 }
@@ -250,8 +247,15 @@ func clearCacheOnSize() {
 	for {
 		time.Sleep(10 * time.Second)
 		if cache.GetSize() > CACHE_CLEAR_SIZE {
-			log.Printf("Clearing cache (size)...")
+			log.Printf("%sClearing cache (size)...%s", COLOR_CACHE, COLOR_RESET)
 			cache.Clear()
 		}
+	}
+}
+
+func displayCacheOnInterval() {
+	for {
+		time.Sleep(60 * time.Second)
+		log.Printf("%sCache status: %v entries (%v phishing entries) %s", COLOR_CACHE, cache.GetSize(), cache.GetNumPhishing(), COLOR_RESET)
 	}
 }

@@ -47,6 +47,20 @@ func (c *Cache) GetSize() int {
 	return len(c.content)
 }
 
+func (c *Cache) GetNumPhishing() int {
+	c.mux.Lock()
+	defer c.mux.Unlock()
+
+	num := 0
+	for _, v := range c.content {
+		if v == true {
+			num++
+		}
+	}
+
+	return num
+}
+
 func (c *Cache) Print() {
 	c.mux.Lock()
 	defer c.mux.Unlock()

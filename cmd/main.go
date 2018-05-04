@@ -50,6 +50,7 @@ func main() {
 	defer CloseDB()
 
 	cache = CreateCache()
+	go displayCacheOnInterval()
 	go clearCacheOnInterval()
 	go clearCacheOnSize()
 

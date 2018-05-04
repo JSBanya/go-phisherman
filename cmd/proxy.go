@@ -21,11 +21,11 @@ func proxyConnection(w http.ResponseWriter, r *http.Request) {
 }
 
 func proxyHTTPs(w http.ResponseWriter, r *http.Request) {
-	/*defer func() {
+	defer func() {
 		if r := recover(); r != nil {
 			logError(fmt.Sprintf("%s", r))
 		}
-	}()*/
+	}()
 
 	// Establish connection
 	dest_conn, err := tls.Dial("tcp", r.Host, nil)
@@ -169,8 +169,7 @@ func proxyHTTP(w http.ResponseWriter, req *http.Request) {
 
 	// If not cached, scan the page (even if it exists in the database)
 	if !cache.IsCached(url) {
-		contentType := strings.TrimSpace(strings.Split(resp.Header.Get("Content-type"), ";")[0])
-		if contentType == "text/html" || contentType == "text/plain" || contentType == "" {
+		if req.Method == "GET" {
 			match, err = detectPhishing("http://", domain, path)
 			if err != nil {
 				log.Printf("Error: %s\n", err)

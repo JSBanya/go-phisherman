@@ -57,7 +57,7 @@ func getImageEdges(raw []byte) ([]byte, error) {
 		return []byte{}, err
 	}
 
-	result := effect.EdgeDetection(effect.Grayscale(original), 1.0)
+	result := effect.EdgeDetection(effect.Grayscale(original), 4.0)
 	buf := new(bytes.Buffer)
 	err = jpeg.Encode(buf, result, nil)
 	if err != nil {
@@ -92,6 +92,10 @@ func imageToPixels(raw []byte) ([]byte, error) {
 func colorToByte(col uint32) byte {
 	unmodded := byte(col / 0x101)
 	mod := byte(unmodded % 10)
+	newCol := unmodded - mod
+	if newCol == 0 {
+		return 1
+	}
 
-	return unmodded - mod
+	return newCol
 }

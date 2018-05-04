@@ -57,7 +57,7 @@ func getImageEdges(raw []byte) ([]byte, error) {
 		return []byte{}, err
 	}
 
-	result := effect.EdgeDetection(effect.Grayscale(original), 4.0)
+	result := effect.EdgeDetection(effect.Grayscale(original), 1.0)
 	buf := new(bytes.Buffer)
 	err = jpeg.Encode(buf, result, nil)
 	if err != nil {

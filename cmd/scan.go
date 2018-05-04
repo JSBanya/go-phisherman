@@ -70,6 +70,18 @@ func detectPhishing(proto string, domain string, path string) (Match, error) {
 		url = fmt.Sprintf("%s.%s", subdomain, url)
 	}
 
+	if DomainStatus(domain) == 1 {
+		// If the site was previously marked as unsafe, simply block it
+			cache.SetValue(url, true)
+			match = Match{
+				IsPhishing: true,
+				URL:        "(unknown)",
+				HashType:   "UNKNOWN",
+				Score:      -1,
+			}
+			return match, nil
+	}
+
 	// Get the HTML from the page
 	html, err := fetchHTML(fmt.Sprintf("%s%s", proto, url))
 	if err != nil && err.Error() == "Non-HTML content" {

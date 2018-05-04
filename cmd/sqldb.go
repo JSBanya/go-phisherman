@@ -13,9 +13,10 @@ var db *sql.DB
 const (
 	DB_PATH = "./data.db"
 	// hashtypes
-	HASH_HTML  = 0
-	HASH_IMAGE = 1
-	HASH_EDGES = 2
+	HASH_HTML   = 0
+	HASH_IMAGE  = 1
+	HASH_EDGES  = 2
+	HASH_HEADER = 3
 )
 
 func ConnectDB() {
@@ -29,7 +30,7 @@ func CloseDB() {
 }
 
 // Stores hash for the domain
-func InsertHashes(subdomain, domain, path, hash_html, hash_image, hash_edges string, safe int) {
+func InsertHashes(subdomain, domain, path, hash_html, hash_image, hash_edges, hash_header string, safe int) {
 	rows, _ := db.Query("SELECT hashtype, hash FROM hashes WHERE subdomain=? AND domain=? AND path=?", subdomain, domain, path)
 	defer rows.Close()
 	var t int
@@ -38,7 +39,8 @@ func InsertHashes(subdomain, domain, path, hash_html, hash_image, hash_edges str
 		rows.Scan(&t, &h)
 		if ((t == HASH_HTML) && (h == hash_html)) ||
 			((t == HASH_IMAGE) && (h == hash_image)) ||
-			((t == HASH_EDGES) && (h == hash_edges)) {
+			((t == HASH_EDGES) && (h == hash_edges)) ||
+			((t == HASH_HEADER) && (h == hash_header)) {
 			return
 		}
 	}
@@ -59,6 +61,11 @@ func InsertHashes(subdomain, domain, path, hash_html, hash_image, hash_edges str
 	if err != nil {
 		log.Printf("Error: %v\n", err)
 	}
+
+	_, err = statement.Exec(subdomain, domain, path, HASH_HEADER, hash_header, safe)
+	if err != nil {
+		log.Printf("Error: %v\n", err)
+	}
 }
 
 func UpdateDomainStatus(domain string, safe int) {
@@ -69,7 +76,7 @@ func UpdateDomainStatus(domain string, safe int) {
 	}
 }
 
-func HashMatch(domain, hash_html, hash_image, hash_edges string) (string, string, int) {
+func HashMatch(domain, hash_html, hash_image, hash_edges, hash_header string) (string, string, int) {
 	rows, _ := db.Query("SELECT subdomain, domain, path, hashtype, hash FROM hashes WHERE domain<>?", domain)
 	defer rows.Close()
 	var sd, d, p, h string
@@ -99,6 +106,14 @@ func HashMatch(domain, hash_html, hash_image, hash_edges string) (string, string
 				log.Printf("%sEdge Score %s/%s vs %s = %v%s", COLOR_SCAN, d, p, domain, score, COLOR_RESET)
 				if score >= THRESHOLD_EDGES {
 					return fmt.Sprintf("%s.%s/%s", sd, d, p), "EDGE", score
+				}
+			}
+		case HASH_HEADER:
+			if hash_header != "" {
+				score, _ := ssdeep.Distance(h, hash_header)
+				log.Printf("%sEdge Score %s/%s vs %s = %v%s", COLOR_SCAN, d, p, domain, score, COLOR_RESET)
+				if score >= THRESHOLD_HEADER {
+					return fmt.Sprintf("%s.%s/%s", sd, d, p), "HEADER", score
 				}
 			}
 		}

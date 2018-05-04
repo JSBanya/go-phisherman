@@ -14,9 +14,10 @@ import (
 )
 
 const (
-	THRESHOLD_HTML  = 30
-	THRESHOLD_IMAGE = 30
-	THRESHOLD_EDGES = 35
+	THRESHOLD_HTML   = 30
+	THRESHOLD_IMAGE  = 30
+	THRESHOLD_EDGES  = 35
+	THRESHOLD_HEADER = 50
 
 	CACHE_CLEAR_INTERVAL = 60 * 60 * 24 // Seconds
 	CACHE_CLEAR_SIZE     = 10000        // Entries
@@ -72,14 +73,14 @@ func detectPhishing(proto string, domain string, path string) (Match, error) {
 
 	if DomainStatus(domain) == 1 {
 		// If the site was previously marked as unsafe, simply block it
-			cache.SetValue(url, true)
-			match = Match{
-				IsPhishing: true,
-				URL:        "(unknown)",
-				HashType:   "UNKNOWN",
-				Score:      -1,
-			}
-			return match, nil
+		cache.SetValue(url, true)
+		match = Match{
+			IsPhishing: true,
+			URL:        "(unknown)",
+			HashType:   "UNKNOWN",
+			Score:      -1,
+		}
+		return match, nil
 	}
 
 	// Get the HTML from the page
@@ -137,14 +138,14 @@ func detectPhishing(proto string, domain string, path string) (Match, error) {
 
 	switch DomainStatus(domain) {
 	case 0: // Domain not in db
-		detectedUrl, hashtype, score := HashMatch(domain, hash_html, hash_image, hash_edges)
+		detectedUrl, hashtype, score := HashMatch(domain, hash_html, hash_image, hash_edges, hash_header)
 		if detectedUrl == "" {
-			InsertHashes(subdomain, domain, path, hash_html, hash_image, hash_edges, 1)
+			InsertHashes(subdomain, domain, path, hash_html, hash_image, hash_edges, hash_header, 1)
 			cache.SetValue(url, false)
 			return match, nil
 		} else {
 			UpdateDomainStatus(domain, 0)
-			InsertHashes(subdomain, domain, path, hash_html, hash_image, hash_edges, 0)
+			InsertHashes(subdomain, domain, path, hash_html, hash_image, hash_edges, hash_header, 0)
 
 			cache.SetValue(url, true)
 			match = Match{
@@ -172,14 +173,14 @@ func detectPhishing(proto string, domain string, path string) (Match, error) {
 				cache.SetValue(url, false)
 				return match, nil
 			}
-			detectedUrl, hashtype, score := HashMatch(domain, hash_html, hash_image, hash_edges)
+			detectedUrl, hashtype, score := HashMatch(domain, hash_html, hash_image, hash_edges, hash_header)
 			if detectedUrl == "" {
-				InsertHashes(subdomain, domain, path, hash_html, hash_image, hash_edges, 1)
+				InsertHashes(subdomain, domain, path, hash_html, hash_image, hash_edges, hash_header, 1)
 				cache.SetValue(url, false)
 				return match, nil
 			}
 			UpdateDomainStatus(domain, 0)
-			InsertHashes(subdomain, domain, path, hash_html, hash_image, hash_edges, 0)
+			InsertHashes(subdomain, domain, path, hash_html, hash_image, hash_edges, hash_header, 0)
 			cache.SetValue(url, true)
 			match = Match{
 				IsPhishing: true,

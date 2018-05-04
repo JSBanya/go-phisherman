@@ -12,7 +12,6 @@ fetch:
 	go get github.com/glaslos/ssdeep
 	go get github.com/anthonynsimon/bild/effect
 	go get github.com/anthonynsimon/bild/transform
-	go get github.com/azr/phash
 
 install:
 	go install github.com/mattn/go-sqlite3

@@ -111,9 +111,9 @@ func HashMatch(domain, hash_html, hash_image, hash_edges, hash_header string) (s
 		case HASH_HEADER:
 			if hash_header != "" {
 				score, _ := ssdeep.Distance(h, hash_header)
-				log.Printf("%sEdge Score %s/%s vs %s = %v%s", COLOR_SCAN, d, p, domain, score, COLOR_RESET)
+				log.Printf("%sHead Score %s/%s vs %s = %v%s", COLOR_SCAN, d, p, domain, score, COLOR_RESET)
 				if score >= THRESHOLD_HEADER {
-					return fmt.Sprintf("%s.%s/%s", sd, d, p), "HEADER", score
+					return fmt.Sprintf("%s.%s/%s", sd, d, p), "HEAD", score
 				}
 			}
 		}

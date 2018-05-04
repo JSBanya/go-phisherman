@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/anthonynsimon/bild/effect"
 	"github.com/anthonynsimon/bild/transform"
 	"image"
@@ -40,6 +41,23 @@ func getPageHead(raw []byte) ([]byte, error) {
 
 	bounds := original.Bounds()
 	result := transform.Crop(original, image.Rect(0, 0, bounds.Dx(), 100))
+
+	// Verify that the header has enough information work with
+	standardized := effect.EdgeDetection(effect.Grayscale(original), 2.0)
+	bounds = standardized.Bounds()
+	variation := 0
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			r, g, b, _ := standardized.At(x, y).RGBA()
+			if r > 128 && g > 128 && b > 128 {
+				variation++
+			}
+		}
+	}
+	complexity := (float64(variation) / float64(bounds.Dx()*bounds.Dy()))
+	if complexity < 0.15 {
+		return []byte{}, fmt.Errorf("Header complexity too low to be accurate.")
+	}
 
 	buf := new(bytes.Buffer)
 	err = jpeg.Encode(buf, result, nil)

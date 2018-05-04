@@ -17,7 +17,7 @@ const (
 	THRESHOLD_HTML   = 30
 	THRESHOLD_IMAGE  = 30
 	THRESHOLD_EDGES  = 35
-	THRESHOLD_HEADER = 50
+	THRESHOLD_HEADER = 40
 
 	CACHE_CLEAR_INTERVAL = 60 * 60 * 24 // Seconds
 	CACHE_CLEAR_SIZE     = 10000        // Entries
@@ -113,8 +113,14 @@ func detectPhishing(proto string, domain string, path string) (Match, error) {
 		log.Printf("GetImageEdges error: %s", err)
 	}
 
+	head, err := getPageHead(binaryImg)
+	if err != nil {
+		log.Printf("GetPageHead error: %s", err)
+	}
+
 	binaryPixels, _ := imageToPixels(binaryImg)
 	edgesPixels, _ := imageToPixels(edges)
+	headPixels, _ := imageToPixels(head)
 
 	//ioutil.WriteFile(fmt.Sprintf("%s.jpg", strings.Replace(url, "/", "", -1)), edges, 0644) // Save image for debug purposes
 
@@ -134,6 +140,12 @@ func detectPhishing(proto string, domain string, path string) (Match, error) {
 	if err != nil {
 		hash_edges = ""
 		log.Printf("Error hashing edges: %s\n", err)
+	}
+
+	hash_header, err := ssdeep.FuzzyBytes(headPixels)
+	if err != nil {
+		hash_header = ""
+		log.Printf("Error hashing header: %s\n", err)
 	}
 
 	switch DomainStatus(domain) {

@@ -15,10 +15,14 @@ import (
 )
 
 const (
-	THRESHOLD_HTML   = 30
-	THRESHOLD_IMAGE  = 30
-	THRESHOLD_EDGES  = 35
-	THRESHOLD_HEADER = 40
+	THRESHOLD_HTML_SSDEEP   = 30
+	THRESHOLD_IMAGE_SSDEEP  = 30
+	THRESHOLD_EDGES_SSDEEP  = 35
+	THRESHOLD_HEADER_SSDEEP = 40
+
+	THRESHOLD_IMAGE_PHASH  = 80
+	THRESHOLD_EDGES_PHASH  = 80
+	THRESHOLD_HEADER_PHASH = 80
 
 	CACHE_CLEAR_INTERVAL = 60 * 60 * 24 // Seconds
 	CACHE_CLEAR_SIZE     = 10000        // Entries
@@ -153,20 +157,20 @@ func detectPhishing(proto string, domain string, path string) (Match, error) {
 	headObj, _ := binaryToImageObj(head)
 
 	// Compute phash
-	phash_image := phash.DTC(binaryObj)
-	phash_edges := phash.DTC(edgesObj)
-	phash_head := phash.DTC(headObj)
+	phash_image := fmt.Sprintf("%v", phash.DTC(binaryObj))
+	phash_edges := fmt.Sprintf("%v", phash.DTC(edgesObj))
+	phash_header := fmt.Sprintf("%v", phash.DTC(headObj))
 
 	switch DomainStatus(domain) {
 	case 0: // Domain not in db
-		detectedUrl, hashtype, score := HashMatch(domain, hash_html, hash_image, hash_edges, hash_header)
+		detectedUrl, hashtype, score := HashMatch(domain, hash_html, hash_image, hash_edges, hash_header, phash_image, phash_edges, phash_header)
 		if detectedUrl == "" {
-			InsertHashes(subdomain, domain, path, hash_html, hash_image, hash_edges, hash_header, 1)
+			InsertHashes(subdomain, domain, path, hash_html, hash_image, hash_edges, hash_header, phash_image, phash_edges, phash_header, 1)
 			cache.SetValue(url, false)
 			return match, nil
 		} else {
 			UpdateDomainStatus(domain, 0)
-			InsertHashes(subdomain, domain, path, hash_html, hash_image, hash_edges, hash_header, 0)
+			InsertHashes(subdomain, domain, path, hash_html, hash_image, hash_edges, hash_header, phash_image, phash_edges, phash_header, 0)
 
 			cache.SetValue(url, true)
 			match = Match{
@@ -194,14 +198,14 @@ func detectPhishing(proto string, domain string, path string) (Match, error) {
 				cache.SetValue(url, false)
 				return match, nil
 			}
-			detectedUrl, hashtype, score := HashMatch(domain, hash_html, hash_image, hash_edges, hash_header)
+			detectedUrl, hashtype, score := HashMatch(domain, hash_html, hash_image, hash_edges, hash_header, phash_image, phash_edges, phash_header)
 			if detectedUrl == "" {
-				InsertHashes(subdomain, domain, path, hash_html, hash_image, hash_edges, hash_header, 1)
+				InsertHashes(subdomain, domain, path, hash_html, hash_image, hash_edges, hash_header, phash_image, phash_edges, phash_header, 1)
 				cache.SetValue(url, false)
 				return match, nil
 			}
 			UpdateDomainStatus(domain, 0)
-			InsertHashes(subdomain, domain, path, hash_html, hash_image, hash_edges, hash_header, 0)
+			InsertHashes(subdomain, domain, path, hash_html, hash_image, hash_edges, hash_header, phash_image, phash_edges, phash_header, 0)
 			cache.SetValue(url, true)
 			match = Match{
 				IsPhishing: true,
@@ -294,7 +298,7 @@ func displayCacheOnInterval() {
 	}
 }
 
-func pHashScore(h1, h2 uint64) float64 {
+func phashScore(h1, h2 uint64) int {
 	xor := h1 ^ h2
 	bitcnt := 0.0
 	for ; xor != 0; xor >>= 1 {
@@ -303,5 +307,6 @@ func pHashScore(h1, h2 uint64) float64 {
 		}
 	}
 
-	return 1 - (bitcnt / 64.0)
+	percentage := 1 - (bitcnt / 64.0)
+	return int(percentage * 100)
 }

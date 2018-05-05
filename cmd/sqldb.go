@@ -6,6 +6,7 @@ import (
 	"github.com/glaslos/ssdeep"
 	_ "github.com/mattn/go-sqlite3"
 	"log"
+	"strconv"
 )
 
 var db *sql.DB
@@ -139,24 +140,36 @@ func HashMatch(domain, hash_html_ssdeep, hash_image_ssdeep, hash_edges_ssdeep, h
 				}
 			}
 		case HASH_IMAGE_PHASH:
+			tmp, _ := strconv.ParseInt(h, 10, 64)
+			h2 := uint64(tmp)
+			tmp, _ = strconv.ParseInt(hash_image_phash, 10, 64)
+			h3 := uint64(tmp)
 			if hash_image_phash != "" {
-				score, _ := ssdeep.Distance(h, hash_image_phash)
+				score := phashScore(h2, h3)
 				log.Printf("%sHead Score %s/%s vs %s = %v%s", COLOR_SCAN, d, p, domain, score, COLOR_RESET)
 				if score >= THRESHOLD_IMAGE_PHASH {
 					return fmt.Sprintf("%s.%s/%s", sd, d, p), "HEAD_PHASH", score
 				}
 			}
 		case HASH_EDGES_PHASH:
+			tmp, _ := strconv.ParseInt(h, 10, 64)
+			h2 := uint64(tmp)
+			tmp, _ = strconv.ParseInt(hash_edges_phash, 10, 64)
+			h3 := uint64(tmp)
 			if hash_edges_phash != "" {
-				score, _ := ssdeep.Distance(h, hash_edges_phash)
+				score := phashScore(h2, h3)
 				log.Printf("%sHead Score %s/%s vs %s = %v%s", COLOR_SCAN, d, p, domain, score, COLOR_RESET)
 				if score >= THRESHOLD_EDGES_PHASH {
 					return fmt.Sprintf("%s.%s/%s", sd, d, p), "HEAD_PHASH", score
 				}
 			}
 		case HASH_HEADER_PHASH:
+			tmp, _ := strconv.ParseInt(h, 10, 64)
+			h2 := uint64(tmp)
+			tmp, _ = strconv.ParseInt(hash_header_phash, 10, 64)
+			h3 := uint64(tmp)
 			if hash_header_phash != "" {
-				score, _ := ssdeep.Distance(h, hash_header_phash)
+				score := phashScore(h2, h3)
 				log.Printf("%sHead Score %s/%s vs %s = %v%s", COLOR_SCAN, d, p, domain, score, COLOR_RESET)
 				if score >= THRESHOLD_HEADER_PHASH {
 					return fmt.Sprintf("%s.%s/%s", sd, d, p), "HEAD_PHASH", score

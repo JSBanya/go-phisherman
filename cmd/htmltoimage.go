@@ -54,8 +54,8 @@ func getPageHead(raw []byte) ([]byte, error) {
 		}
 	}
 	complexity := (float64(variation) / float64(bounds.Dx()*bounds.Dy()))
-	if complexity < 0.15 {
-		return []byte{}, fmt.Errorf("Header complexity too low to be accurate.")
+	if complexity < 0.10 {
+		return []byte{}, fmt.Errorf("Header complexity too low to be accurate (%v).", complexity)
 	}
 
 	buf := new(bytes.Buffer)

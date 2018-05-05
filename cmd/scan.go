@@ -95,11 +95,7 @@ func detectPhishing(proto string, domain string, path string) (Match, error) {
 	}
 
 	if len(html) < 4096 {
-		// SSDeep enforced a min length of 4096 bytes
-		// It is unlikely that a detectable phishing website will be smaller than this anyway
 		log.Printf("HTML too small to process for %s\n", url)
-		cache.SetValue(url, false)
-		return match, nil
 	}
 
 	// Get the image of the page
@@ -283,4 +279,16 @@ func displayCacheOnInterval() {
 		time.Sleep(60 * time.Second)
 		log.Printf("%sCache status: %v entries (%v phishing entries) %s", COLOR_CACHE, cache.GetSize(), cache.GetNumPhishing(), COLOR_RESET)
 	}
+}
+
+func pHashScore(h1, h2 uint64) float64 {
+	xor := h1 ^ h2
+	bitcnt := 0.0
+	for ; xor != 0; xor >>= 1 {
+		if xor & 1 != 0 {
+			bitcnt++
+		}
+	}
+
+	return 1 - (bitcnt / 64.0)
 }

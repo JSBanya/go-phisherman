@@ -33,8 +33,7 @@ func getImageFromURL(url string) ([]byte, error) {
 }
 
 func getPageHead(raw []byte) ([]byte, error) {
-	imageReader := bytes.NewReader(raw)
-	original, _, err := image.Decode(imageReader)
+	original, err := binaryToImageObj(raw)
 	if err != nil {
 		return []byte{}, err
 	}
@@ -69,8 +68,7 @@ func getPageHead(raw []byte) ([]byte, error) {
 
 // Returns a image containing only edges
 func getImageEdges(raw []byte) ([]byte, error) {
-	imageReader := bytes.NewReader(raw)
-	original, _, err := image.Decode(imageReader)
+	original, err := binaryToImageObj(raw)
 	if err != nil {
 		return []byte{}, err
 	}
@@ -84,11 +82,16 @@ func getImageEdges(raw []byte) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+func binaryToImageObj(raw []byte) (image.Image, error) {
+	imageReader := bytes.NewReader(raw)
+	img, _, err := image.Decode(imageReader)
+	return img, err
+}
+
 // Takes the given image binary data and converts to 8-bit image array
 // Returns the array and the width of the image
 func imageToPixels(raw []byte) ([]byte, error) {
-	imageReader := bytes.NewReader(raw)
-	img, _, err := image.Decode(imageReader)
+	img, err := binaryToImageObj(raw)
 	if err != nil {
 		return []byte{}, err
 	}

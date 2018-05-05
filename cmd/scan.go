@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"crypto/tls"
 	"fmt"
+	"github.com/azr/phash"
 	"github.com/glaslos/ssdeep"
 	"io"
 	"io/ioutil"
@@ -114,12 +115,14 @@ func detectPhishing(proto string, domain string, path string) (Match, error) {
 		log.Printf("GetPageHead error: %s", err)
 	}
 
+	//ioutil.WriteFile(fmt.Sprintf("%s.jpg", strings.Replace(url, "/", "", -1)), edges, 0644) // Save image for debug purposes
+
+	// Get byte array of pixels for ssdeep
 	binaryPixels, _ := imageToPixels(binaryImg)
 	edgesPixels, _ := imageToPixels(edges)
 	headPixels, _ := imageToPixels(head)
 
-	//ioutil.WriteFile(fmt.Sprintf("%s.jpg", strings.Replace(url, "/", "", -1)), edges, 0644) // Save image for debug purposes
-
+	// Compute ssdeep
 	hash_html, err := ssdeep.FuzzyBytes(html)
 	if err != nil {
 		hash_html = ""
@@ -143,6 +146,16 @@ func detectPhishing(proto string, domain string, path string) (Match, error) {
 		hash_header = ""
 		log.Printf("Error hashing header: %s\n", err)
 	}
+
+	// Get image objects for phash
+	binaryObj, _ := binaryToImageObj(binaryImg)
+	edgesObj, _ := binaryToImageObj(edges)
+	headObj, _ := binaryToImageObj(head)
+
+	// Compute phash
+	phash_image := phash.DTC(binaryObj)
+	phash_edges := phash.DTC(edgesObj)
+	phash_head := phash.DTC(headObj)
 
 	switch DomainStatus(domain) {
 	case 0: // Domain not in db
@@ -285,7 +298,7 @@ func pHashScore(h1, h2 uint64) float64 {
 	xor := h1 ^ h2
 	bitcnt := 0.0
 	for ; xor != 0; xor >>= 1 {
-		if xor & 1 != 0 {
+		if xor&1 != 0 {
 			bitcnt++
 		}
 	}

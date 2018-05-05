@@ -13,10 +13,14 @@ var db *sql.DB
 const (
 	DB_PATH = "./data.db"
 	// hashtypes
-	HASH_HTML   = 0
-	HASH_IMAGE  = 1
-	HASH_EDGES  = 2
-	HASH_HEADER = 3
+	HASH_HTML_SSDEEP   = 0
+	HASH_IMAGE_SSDEEP  = 1
+	HASH_EDGES_SSDEEP  = 2
+	HASH_HEADER_SSDEEP = 3
+
+	HASH_IMAGE_PHASH  = 4
+	HASH_EDGES_PHASH  = 5
+	HASH_HEADER_PHASH = 6
 )
 
 func ConnectDB() {
@@ -30,39 +34,57 @@ func CloseDB() {
 }
 
 // Stores hash for the domain
-func InsertHashes(subdomain, domain, path, hash_html, hash_image, hash_edges, hash_header string, safe int) {
+func InsertHashes(subdomain, domain, path, hash_html_ssdeep, hash_image_ssdeep, hash_edges_ssdeep, hash_header_ssdeep, hash_image_phash, hash_edges_phash, hash_header_phash string, safe int) {
 	rows, _ := db.Query("SELECT hashtype, hash FROM hashes WHERE subdomain=? AND domain=? AND path=?", subdomain, domain, path)
 	defer rows.Close()
 	var t int
 	var h string
 	for rows.Next() {
 		rows.Scan(&t, &h)
-		if ((t == HASH_HTML) && (h == hash_html)) ||
-			((t == HASH_IMAGE) && (h == hash_image)) ||
-			((t == HASH_EDGES) && (h == hash_edges)) ||
-			((t == HASH_HEADER) && (h == hash_header)) {
+		if ((t == HASH_HTML_SSDEEP) && (h == hash_html_ssdeep)) ||
+			((t == HASH_IMAGE_SSDEEP) && (h == hash_image_ssdeep)) ||
+			((t == HASH_EDGES_SSDEEP) && (h == hash_edges_ssdeep)) ||
+			((t == HASH_HEADER_SSDEEP) && (h == hash_header_ssdeep)) ||
+			((t == HASH_IMAGE_PHASH) && (h == hash_image_phash)) ||
+			((t == HASH_EDGES_PHASH) && (h == hash_edges_phash)) ||
+			((t == HASH_HEADER_PHASH) && (h == hash_header_phash)) {
 			return
 		}
 	}
 
 	statement, _ := db.Prepare("INSERT INTO hashes (subdomain, domain, path, hashtype, hash, safe) VALUES (?, ?, ?, ?, ?, ?)")
 
-	_, err := statement.Exec(subdomain, domain, path, HASH_HTML, hash_html, safe)
+	_, err := statement.Exec(subdomain, domain, path, HASH_HTML_SSDEEP, hash_html_ssdeep, safe)
 	if err != nil {
 		log.Printf("Error: %v\n", err)
 	}
 
-	_, err = statement.Exec(subdomain, domain, path, HASH_IMAGE, hash_image, safe)
+	_, err = statement.Exec(subdomain, domain, path, HASH_IMAGE_SSDEEP, hash_image_ssdeep, safe)
 	if err != nil {
 		log.Printf("Error: %v\n", err)
 	}
 
-	_, err = statement.Exec(subdomain, domain, path, HASH_EDGES, hash_edges, safe)
+	_, err = statement.Exec(subdomain, domain, path, HASH_EDGES_SSDEEP, hash_edges_ssdeep, safe)
 	if err != nil {
 		log.Printf("Error: %v\n", err)
 	}
 
-	_, err = statement.Exec(subdomain, domain, path, HASH_HEADER, hash_header, safe)
+	_, err = statement.Exec(subdomain, domain, path, HASH_HEADER_SSDEEP, hash_header_ssdeep, safe)
+	if err != nil {
+		log.Printf("Error: %v\n", err)
+	}
+
+	_, err = statement.Exec(subdomain, domain, path, HASH_IMAGE_PHASH, hash_image_phash, safe)
+	if err != nil {
+		log.Printf("Error: %v\n", err)
+	}
+
+	_, err = statement.Exec(subdomain, domain, path, HASH_EDGES_PHASH, hash_edges_phash, safe)
+	if err != nil {
+		log.Printf("Error: %v\n", err)
+	}
+
+	_, err = statement.Exec(subdomain, domain, path, HASH_HEADER_PHASH, hash_header_phash, safe)
 	if err != nil {
 		log.Printf("Error: %v\n", err)
 	}
@@ -76,7 +98,7 @@ func UpdateDomainStatus(domain string, safe int) {
 	}
 }
 
-func HashMatch(domain, hash_html, hash_image, hash_edges, hash_header string) (string, string, int) {
+func HashMatch(domain, hash_html_ssdeep, hash_image_ssdeep, hash_edges_ssdeep, hash_header_ssdeep, hash_image_phash, hash_edges_phash, hash_header_phash string) (string, string, int) {
 	rows, _ := db.Query("SELECT subdomain, domain, path, hashtype, hash FROM hashes WHERE domain<>?", domain)
 	defer rows.Close()
 	var sd, d, p, h string
@@ -84,36 +106,60 @@ func HashMatch(domain, hash_html, hash_image, hash_edges, hash_header string) (s
 	for rows.Next() {
 		rows.Scan(&sd, &d, &p, &t, &h)
 		switch t {
-		case HASH_HTML:
-			if hash_html != "" {
-				score, _ := ssdeep.Distance(h, hash_html)
+		case HASH_HTML_SSDEEP:
+			if hash_html_ssdeep != "" {
+				score, _ := ssdeep.Distance(h, hash_html_ssdeep)
 				log.Printf("%sHTML Score %s/%s vs %s = %v%s", COLOR_SCAN, d, p, domain, score, COLOR_RESET)
-				if score >= THRESHOLD_HTML {
-					return fmt.Sprintf("%s.%s/%s", sd, d, p), "HTML", score
+				if score >= THRESHOLD_HTML_SSDEEP {
+					return fmt.Sprintf("%s.%s/%s", sd, d, p), "HTML_SSDEEP", score
 				}
 			}
-		case HASH_IMAGE:
-			if hash_image != "" {
-				score, _ := ssdeep.Distance(h, hash_image)
+		case HASH_IMAGE_SSDEEP:
+			if hash_image_ssdeep != "" {
+				score, _ := ssdeep.Distance(h, hash_image_ssdeep)
 				log.Printf("%sImage Score %s/%s vs %s = %v%s", COLOR_SCAN, d, p, domain, score, COLOR_RESET)
-				if score >= THRESHOLD_IMAGE {
-					return fmt.Sprintf("%s.%s/%s", sd, d, p), "IMAGE", score
+				if score >= THRESHOLD_IMAGE_SSDEEP {
+					return fmt.Sprintf("%s.%s/%s", sd, d, p), "IMAGE_SSDEEP", score
 				}
 			}
-		case HASH_EDGES:
-			if hash_edges != "" {
-				score, _ := ssdeep.Distance(h, hash_edges)
+		case HASH_EDGES_SSDEEP:
+			if hash_edges_ssdeep != "" {
+				score, _ := ssdeep.Distance(h, hash_edges_ssdeep)
 				log.Printf("%sEdge Score %s/%s vs %s = %v%s", COLOR_SCAN, d, p, domain, score, COLOR_RESET)
-				if score >= THRESHOLD_EDGES {
-					return fmt.Sprintf("%s.%s/%s", sd, d, p), "EDGE", score
+				if score >= THRESHOLD_EDGES_SSDEEP {
+					return fmt.Sprintf("%s.%s/%s", sd, d, p), "EDGE_SSDEEP", score
 				}
 			}
-		case HASH_HEADER:
-			if hash_header != "" {
-				score, _ := ssdeep.Distance(h, hash_header)
+		case HASH_HEADER_SSDEEP:
+			if hash_header_ssdeep != "" {
+				score, _ := ssdeep.Distance(h, hash_header_ssdeep)
 				log.Printf("%sHead Score %s/%s vs %s = %v%s", COLOR_SCAN, d, p, domain, score, COLOR_RESET)
-				if score >= THRESHOLD_HEADER {
-					return fmt.Sprintf("%s.%s/%s", sd, d, p), "HEAD", score
+				if score >= THRESHOLD_HEADER_SSDEEP {
+					return fmt.Sprintf("%s.%s/%s", sd, d, p), "HEAD_SSDEEP", score
+				}
+			}
+		case HASH_IMAGE_PHASH:
+			if hash_image_phash != "" {
+				score, _ := ssdeep.Distance(h, hash_image_phash)
+				log.Printf("%sHead Score %s/%s vs %s = %v%s", COLOR_SCAN, d, p, domain, score, COLOR_RESET)
+				if score >= THRESHOLD_IMAGE_PHASH {
+					return fmt.Sprintf("%s.%s/%s", sd, d, p), "HEAD_PHASH", score
+				}
+			}
+		case HASH_EDGES_PHASH:
+			if hash_edges_phash != "" {
+				score, _ := ssdeep.Distance(h, hash_edges_phash)
+				log.Printf("%sHead Score %s/%s vs %s = %v%s", COLOR_SCAN, d, p, domain, score, COLOR_RESET)
+				if score >= THRESHOLD_EDGES_PHASH {
+					return fmt.Sprintf("%s.%s/%s", sd, d, p), "HEAD_PHASH", score
+				}
+			}
+		case HASH_HEADER_PHASH:
+			if hash_header_phash != "" {
+				score, _ := ssdeep.Distance(h, hash_header_phash)
+				log.Printf("%sHead Score %s/%s vs %s = %v%s", COLOR_SCAN, d, p, domain, score, COLOR_RESET)
+				if score >= THRESHOLD_HEADER_PHASH {
+					return fmt.Sprintf("%s.%s/%s", sd, d, p), "HEAD_PHASH", score
 				}
 			}
 		}

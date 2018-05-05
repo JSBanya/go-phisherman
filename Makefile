@@ -14,15 +14,12 @@ fetch:
 	go get github.com/anthonynsimon/bild/transform
 	go get github.com/azr/phash
 
-install:
-	go install github.com/mattn/go-sqlite3
-
-test:
-	go test
-
 clean:
 	go clean
-	rm -rf vendor/*
-	rm -f $(BINARY)
+	$(RM) -r vendor/*
+	$(RM) $(BINARY)
+	$(RM) certs/*
+	$(RM) data.db
+	$(RM) rootCA.*
 
 .PHONY: all build fetch test clean

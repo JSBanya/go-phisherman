@@ -3,7 +3,6 @@ PhisherMan Install Guide and Usage
 Dependencies needed for PhisherMan:
 Please make sure you have installed the following software packages before proceeding:
 * golang (https://golang.org/)
-* sqlite (https://sqlite.org/index.html)
 * wkhtmltoimage (https://wkhtmltopdf.org/)
 
 
@@ -15,7 +14,8 @@ $ make
 How to initialize PhisherMan:
 PhisherMan's root certificate must be created before PhisherMan can be used:
 $ ./init_rootca.sh
-Then, install the root certificate (rootCA.crt) into your browser under the "Authorities" tab
+Then, install the root certificate (rootCA.crt) into your browser under the "Authorities" tab.
+Be sure to check the box to "Trust this certificate for identifying websites"
 
 How to run PhisherMan:
 $ ./phisherman [PORT]

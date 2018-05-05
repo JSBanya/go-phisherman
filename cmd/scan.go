@@ -126,6 +126,16 @@ func detectPhishing(proto string, domain string, path string) (Match, error) {
 	edgesPixels, _ := imageToPixels(edges)
 	headPixels, _ := imageToPixels(head)
 
+	// Get image objects for phash
+	binaryObj, _ := binaryToImageObj(binaryImg)
+	edgesObj, _ := binaryToImageObj(edges)
+	headObj, _ := binaryToImageObj(head)
+
+	// Compute phash
+	phash_image := fmt.Sprintf("%v", phash.DTC(binaryObj))
+	phash_edges := fmt.Sprintf("%v", phash.DTC(edgesObj))
+	phash_header := fmt.Sprintf("%v", phash.DTC(headObj))
+
 	// Compute ssdeep
 	hash_html, err := ssdeep.FuzzyBytes(html)
 	if err != nil {
@@ -136,30 +146,23 @@ func detectPhishing(proto string, domain string, path string) (Match, error) {
 	hash_image, err := ssdeep.FuzzyBytes(binaryPixels)
 	if err != nil {
 		hash_image = ""
+		phash_image = ""
 		log.Printf("Error hashing image: %s\n", err)
 	}
 
 	hash_edges, err := ssdeep.FuzzyBytes(edgesPixels)
 	if err != nil {
 		hash_edges = ""
+		phash_edges = ""
 		log.Printf("Error hashing edges: %s\n", err)
 	}
 
 	hash_header, err := ssdeep.FuzzyBytes(headPixels)
 	if err != nil {
 		hash_header = ""
+		phash_header = ""
 		log.Printf("Error hashing header: %s\n", err)
 	}
-
-	// Get image objects for phash
-	binaryObj, _ := binaryToImageObj(binaryImg)
-	edgesObj, _ := binaryToImageObj(edges)
-	headObj, _ := binaryToImageObj(head)
-
-	// Compute phash
-	phash_image := fmt.Sprintf("%v", phash.DTC(binaryObj))
-	phash_edges := fmt.Sprintf("%v", phash.DTC(edgesObj))
-	phash_header := fmt.Sprintf("%v", phash.DTC(headObj))
 
 	switch DomainStatus(domain) {
 	case 0: // Domain not in db

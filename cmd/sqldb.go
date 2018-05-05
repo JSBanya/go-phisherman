@@ -140,37 +140,31 @@ func HashMatch(domain, hash_html_ssdeep, hash_image_ssdeep, hash_edges_ssdeep, h
 				}
 			}
 		case HASH_IMAGE_PHASH:
-			tmp, _ := strconv.ParseInt(h, 10, 64)
-			h2 := uint64(tmp)
-			tmp, _ = strconv.ParseInt(hash_image_phash, 10, 64)
-			h3 := uint64(tmp)
+			h2, _ := strconv.ParseUint(h, 10, 64)
+			h3, _ := strconv.ParseUint(hash_image_phash, 10, 64)
 			if hash_image_phash != "" {
 				score := phashScore(h2, h3)
-				log.Printf("%sHead Score %s/%s vs %s = %v%s", COLOR_SCAN, d, p, domain, score, COLOR_RESET)
+				log.Printf("%sPHash Image Score %s/%s vs %s = %v%s", COLOR_SCAN, d, p, domain, score, COLOR_RESET)
 				if score >= THRESHOLD_IMAGE_PHASH {
-					return fmt.Sprintf("%s.%s/%s", sd, d, p), "HEAD_PHASH", score
+					return fmt.Sprintf("%s.%s/%s", sd, d, p), "IMAGE_PHASH", score
 				}
 			}
 		case HASH_EDGES_PHASH:
-			tmp, _ := strconv.ParseInt(h, 10, 64)
-			h2 := uint64(tmp)
-			tmp, _ = strconv.ParseInt(hash_edges_phash, 10, 64)
-			h3 := uint64(tmp)
+			h2, _ := strconv.ParseUint(h, 10, 64)
+			h3, _ := strconv.ParseUint(hash_edges_phash, 10, 64)
 			if hash_edges_phash != "" {
 				score := phashScore(h2, h3)
-				log.Printf("%sHead Score %s/%s vs %s = %v%s", COLOR_SCAN, d, p, domain, score, COLOR_RESET)
+				log.Printf("%sPHash Edge Score %s/%s vs %s = %v%s", COLOR_SCAN, d, p, domain, score, COLOR_RESET)
 				if score >= THRESHOLD_EDGES_PHASH {
-					return fmt.Sprintf("%s.%s/%s", sd, d, p), "HEAD_PHASH", score
+					return fmt.Sprintf("%s.%s/%s", sd, d, p), "EDGE_PHASH", score
 				}
 			}
 		case HASH_HEADER_PHASH:
-			tmp, _ := strconv.ParseInt(h, 10, 64)
-			h2 := uint64(tmp)
-			tmp, _ = strconv.ParseInt(hash_header_phash, 10, 64)
-			h3 := uint64(tmp)
+			h2, _ := strconv.ParseUint(h, 10, 64)
+			h3, _ := strconv.ParseUint(hash_header_phash, 10, 64)
 			if hash_header_phash != "" {
 				score := phashScore(h2, h3)
-				log.Printf("%sHead Score %s/%s vs %s = %v%s", COLOR_SCAN, d, p, domain, score, COLOR_RESET)
+				log.Printf("%sPHash Head Score %s/%s vs %s = %v%s", COLOR_SCAN, d, p, domain, score, COLOR_RESET)
 				if score >= THRESHOLD_HEADER_PHASH {
 					return fmt.Sprintf("%s.%s/%s", sd, d, p), "HEAD_PHASH", score
 				}

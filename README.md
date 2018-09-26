@@ -13,18 +13,29 @@ Please make sure you have installed the following software packages before proce
 
 ## How to build PhisherMan:
 PhisherMan can be easily built using the provided Makefile. Just run the following commands:
+```
 $ make fetch
 $ make
+```
 
 ## How to initialize PhisherMan:
 PhisherMan's root certificate must be created before PhisherMan can be used:
+```
 $ ./init_rootca.sh
+```
 Then, install the root certificate (rootCA.crt) into your browser under the "Authorities" tab.
+
 Be sure to check the box to "Trust this certificate for identifying websites"
 
 ## How to run PhisherMan:
+```
 $ ./phisherman [PORT]
+```
 Then, launch the web browser you installed the certificate into and configure it to use PhisherMan's proxy on the specified port (or the default 52078).
+
 You may also prefer to use incognito or private browsing mode for testing as you will likely be visiting a bunch of phishing sites.
+
 This can be easily accomplished with chrome/chromium in one command:
+```
 $ chromium-browser --incognito --proxy-server=localhost:52078
+```
